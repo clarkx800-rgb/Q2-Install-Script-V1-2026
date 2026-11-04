@@ -27,10 +27,13 @@ show_file_clean() {
         echo "File not found: $file_path"
     fi
     echo -e "${CYAN}${BOLD}----------------------------------------------------------------------${NC}"
-    nav_pause "Press ENTER to return to the Tips & Troubleshooting menu..."
+    nav_pause "Press ENTER (or 'b') to return to the Tips & Troubleshooting menu..." || true
 }
 
 run_live_health_check() {
+    local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
+    local ttys4_dev="${SIM_TTYS4:-/dev/ttyS4}"
+
     echo ""
     echo -e "${CYAN}${BOLD}======================================================================${NC}"
     echo -e "${BOLD} 🩺 LIVE QIDI Q2 AP BOARD HEALTH & CONNECTION DIAGNOSTIC${NC}"
@@ -39,32 +42,51 @@ run_live_health_check() {
     echo -e "\n${BOLD}1. Linux Kernel Version:${NC}"
     uname -a || true
 
-    echo -e "\n${BOLD}2. Detected USB Boards (/dev/serial/by-id/):${NC}"
-    if [[ -d /dev/serial/by-id ]] && [[ -n "$(ls -A /dev/serial/by-id 2>/dev/null)" ]]; then
-        ls -l /dev/serial/by-id/
+    echo -e "\n${BOLD}2. Detected USB Boards (${serial_dir}/):${NC}"
+    if [[ -d "$serial_dir" ]] && [[ -n "$(ls -A "$serial_dir" 2>/dev/null)" ]]; then
+        ls -l "$serial_dir"/
     else
-        echo -e "   ${YELLOW}[!] No USB serial devices found in /dev/serial/by-id/${NC}"
+        echo -e "   ${YELLOW}[!] No USB serial devices found in ${serial_dir}/${NC}"
     fi
 
-    echo -e "\n${BOLD}3. Internal Toolhead Serial Port (/dev/ttyS4):${NC}"
-    if [[ -e /dev/ttyS4 ]]; then
-        ls -l /dev/ttyS4
+    echo -e "\n${BOLD}3. Internal Toolhead Serial Port (${ttys4_dev}):${NC}"
+    if [[ -e "$ttys4_dev" ]]; then
+        ls -l "$ttys4_dev"
     else
-        echo -e "   ${YELLOW}[!] /dev/ttyS4 not detected.${NC}"
+        echo -e "   ${YELLOW}[!] ${ttys4_dev} not detected.${NC}"
     fi
 
-    echo -e "\n${BOLD}4. CPU Governor Speed Mode:${NC}"
+    echo -e "\n${BOLD}4. Katapult Bootloader Auto-Detection Status:${NC}"
+    if source "$SCRIPT_DIR/flash_firmware.sh" --source-only 2>/dev/null; then
+        if is_katapult_installed_mcu; then
+            echo -e "   • Motion Mainboard (MCU): ${GREEN}[✓] Installed / Ready${NC}"
+        else
+            echo -e "   • Motion Mainboard (MCU): ${YELLOW}[ ] Stock / Not yet marked${NC}"
+        fi
+        if is_katapult_installed_thr; then
+            echo -e "   • Toolhead Board (THR):   ${GREEN}[✓] Installed / Ready${NC}"
+        else
+            echo -e "   • Toolhead Board (THR):   ${YELLOW}[ ] Stock / Not yet marked${NC}"
+        fi
+        if is_katapult_installed_mmu; then
+            echo -e "   • Qidi Box (MMU):         ${GREEN}[✓] Installed / Ready${NC}"
+        else
+            echo -e "   • Qidi Box (MMU):         ${YELLOW}[ ] Stock / Not yet marked${NC}"
+        fi
+    fi
+
+    echo -e "\n${BOLD}5. CPU Governor Speed Mode:${NC}"
     cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 2>/dev/null | sort -u || echo "   (Not available on this host)"
 
-    echo -e "\n${BOLD}5. Wi-Fi Power-Save Sleep Status (wlan0):${NC}"
+    echo -e "\n${BOLD}6. Wi-Fi Power-Save Sleep Status (wlan0):${NC}"
     iw dev wlan0 get power_save 2>/dev/null || echo "   (iw / wlan0 not active)"
 
-    echo -e "\n${BOLD}6. Klipper & Moonraker Service Status:${NC}"
+    echo -e "\n${BOLD}7. Klipper & Moonraker Service Status:${NC}"
     echo -n "   • klipper:   " && systemctl is-active klipper 2>/dev/null || true
     echo -n "   • moonraker: " && systemctl is-active moonraker 2>/dev/null || true
 
     echo ""
-    nav_pause "Press ENTER to return to the Tips & Troubleshooting menu..."
+    nav_pause "Press ENTER (or 'b') to return to the Tips & Troubleshooting menu..." || true
 }
 
 while true; do
@@ -101,10 +123,10 @@ while true; do
             run_live_health_check
             ;;
         5|b|back|menu|m)
-            break
+            exit 10
             ;;
         6|q|quit|exit)
-            exit 0
+            nav_quit
             ;;
         *)
             echo "Invalid selection."

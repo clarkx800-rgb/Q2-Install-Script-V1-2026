@@ -52,8 +52,19 @@ EOF
     # Create a 4MB zero-filled mock boot partition image
     dd if=/dev/zero of="$SIM_DIR/mock_boot_partition.img" bs=1M count=4 status=none 2>/dev/null || true
 
-    # 4. Copy initial baseline configurations into simulated printer_data/config
-    cp -rp "$SUITE_ROOT/configs"/* "$SIM_DIR/printer_data/config/" 2>/dev/null || true
+    # 4. Copy initial baseline configurations into simulated printer_data/config (simulating factory Q2 state)
+    for item in printer.cfg moonraker.conf crowsnest.conf saved_variables.cfg timelapse.cfg plr.cfg MCU_ID.cfg gcode_macro_basic.cfg; do
+        if [[ -e "$SUITE_ROOT/configs/$item" ]]; then
+            cp -rp "$SUITE_ROOT/configs/$item" "$SIM_DIR/printer_data/config/" 2>/dev/null || true
+        fi
+    done
+    cat << 'EOF' > "$SIM_DIR/printer_data/config/user_custom_macros.cfg"
+# Factory / Custom User Macros (Pre-existing before installer)
+[gcode_macro MY_CUSTOM_START]
+gcode:
+    RESPOND MSG="Custom user macro active"
+EOF
+    SIM_CONFIG_DIR="$SIM_DIR/printer_data/config" bash "$SUITE_ROOT/scripts/manage_macros.sh" --keep-silent 2>/dev/null || true
 else
     echo -e "${GREEN}[*] Re-run mode active! Preserving previous sandbox state and Katapult markers...${NC}"
     mkdir -p "$SIM_DIR"/{bin,dev/serial/by-id,etc/sysctl.d,etc/modprobe.d,etc/udev/rules.d,etc/default,etc/systemd/system,printer_data/config,q2_ap_backups}

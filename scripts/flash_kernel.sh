@@ -47,7 +47,7 @@ if [[ -z "$BOOT_PART" ]]; then
     fi
 fi
 
-if [[ -z "$BOOT_PART" ]]; then
+if [[ -z "$BOOT_PART" ]] || { [[ ! -b "$BOOT_PART" && ! -f "$BOOT_PART" ]]; }; then
     echo -e "${RED}[-] Error: Could not automatically detect the AP board 'boot' partition.${NC}"
     echo "    Make sure you are running directly on the Qidi OEM AP board (RK3308)."
     exit 1
@@ -61,12 +61,14 @@ if [[ -f "$BACKUP_FILE" ]]; then
     echo "    $BACKUP_FILE"
 else
     echo -e "${CYAN}[+] Backing up current boot partition to: $BACKUP_FILE...${NC}"
-    dd if="$BOOT_PART" of="$BACKUP_FILE" bs=4M conv=fsync status=progress
+    dd if="$BOOT_PART" of="$BACKUP_FILE" bs=4M conv=fsync status=progress 2>/dev/null \
+        || dd if="$BOOT_PART" of="$BACKUP_FILE" bs=4M conv=fsync status=none
     echo -e "${GREEN}    [✓] Backup saved safely.${NC}"
 fi
 
 echo -e "${CYAN}[+] Writing N3oney 5.10 Kernel (q2_boot.img) to ${BOOT_PART}...${NC}"
-dd if="$KERNEL_IMG" of="$BOOT_PART" bs=4M conv=fsync status=progress
+dd if="$KERNEL_IMG" of="$BOOT_PART" bs=4M conv=fsync status=progress 2>/dev/null \
+    || dd if="$KERNEL_IMG" of="$BOOT_PART" bs=4M conv=fsync status=none
 echo ""
 echo -e "${GREEN}${BOLD}======================================================================${NC}"
 echo -e "${GREEN}${BOLD} [✓] N3oney 5.10 Kernel Flashed Successfully!${NC}"

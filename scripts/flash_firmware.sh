@@ -15,9 +15,6 @@ PRECOMPILED_DIR="$FIRMWARE_DIR/precompiled"
 
 source "$SCRIPT_DIR/ui_nav.sh"
 
-REAL_USER="${SUDO_USER:-$USER}"
-USER_HOME=$(eval echo "~$REAL_USER")
-
 # ANSI Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,7 +26,7 @@ NC='\033[0m'
 
 # Detect best Python interpreter (prefer klippy-env which always has pyserial)
 PYTHON_BIN="python3"
-for p in "$USER_HOME/klippy-env/bin/python" "/home/mks/klippy-env/bin/python" "/home/mks/klipper-env/bin/python" "$USER_HOME/klipper-env/bin/python"; do
+for p in "/home/mks/klippy-env/bin/python" "$USER_HOME/klippy-env/bin/python" "/home/mks/klipper-env/bin/python" "$USER_HOME/klipper-env/bin/python"; do
     if [[ -x "$p" ]]; then
         PYTHON_BIN="$p"
         break
@@ -48,10 +45,10 @@ get_target_config_dir() {
         echo "$SIM_CONFIG_DIR"
         return 0
     fi
-    if [[ -d "$USER_HOME/printer_data/config" ]]; then
-        echo "$USER_HOME/printer_data/config"
-    elif [[ -d "/home/mks/printer_data/config" ]]; then
+    if [[ -d "/home/mks/printer_data/config" ]]; then
         echo "/home/mks/printer_data/config"
+    elif [[ -d "$USER_HOME/printer_data/config" ]]; then
+        echo "$USER_HOME/printer_data/config"
     elif [[ -d "/home/mks/klipper_config" ]]; then
         echo "/home/mks/klipper_config"
     else
@@ -95,8 +92,7 @@ select_usb_device() {
                 return 1
                 ;;
             quit|q|exit)
-                echo -e "\n${GREEN}${BOLD}Exiting installer. Goodbye!${NC}"
-                exit 0
+                nav_quit
                 ;;
             *)
                 if [[ "$sel_res" =~ ^[0-9]+$ ]]; then
@@ -111,8 +107,7 @@ select_usb_device() {
                         return 1
                     else
                         # Exit option
-                        echo -e "\n${GREEN}${BOLD}Exiting installer. Goodbye!${NC}"
-                        exit 0
+                        nav_quit
                     fi
                 fi
                 ;;
@@ -152,7 +147,10 @@ is_katapult_installed_mcu() {
     local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
 
     # 1. Check persistent marker files
-    if [[ -f "$target_cfg/.katapult_mcu_installed" || -f "$USER_HOME/.katapult_mcu_installed" || -f "/home/mks/.katapult_mcu_installed" ]]; then
+    if [[ -f "$target_cfg/.katapult_mcu_installed" ]]; then
+        return 0
+    fi
+    if [[ "${SIM_MODE:-0}" != "1" ]] && [[ -f "$USER_HOME/.katapult_mcu_installed" || -f "/home/mks/.katapult_mcu_installed" ]]; then
         return 0
     fi
 
@@ -190,7 +188,10 @@ is_katapult_installed_thr() {
     local ttys4_dev="${SIM_TTYS4:-/dev/ttyS4}"
 
     # 1. Check persistent marker files
-    if [[ -f "$target_cfg/.katapult_thr_installed" || -f "$USER_HOME/.katapult_thr_installed" || -f "/home/mks/.katapult_thr_installed" ]]; then
+    if [[ -f "$target_cfg/.katapult_thr_installed" ]]; then
+        return 0
+    fi
+    if [[ "${SIM_MODE:-0}" != "1" ]] && [[ -f "$USER_HOME/.katapult_thr_installed" || -f "/home/mks/.katapult_thr_installed" ]]; then
         return 0
     fi
 
@@ -215,7 +216,10 @@ is_katapult_installed_mmu() {
     local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
 
     # 1. Check persistent marker files
-    if [[ -f "$target_cfg/.katapult_mmu_installed" || -f "$USER_HOME/.katapult_mmu_installed" || -f "/home/mks/.katapult_mmu_installed" ]]; then
+    if [[ -f "$target_cfg/.katapult_mmu_installed" ]]; then
+        return 0
+    fi
+    if [[ "${SIM_MODE:-0}" != "1" ]] && [[ -f "$USER_HOME/.katapult_mmu_installed" || -f "/home/mks/.katapult_mmu_installed" ]]; then
         return 0
     fi
 
@@ -252,10 +256,116 @@ mark_katapult_installed() {
     local target_cfg
     target_cfg=$(get_target_config_dir)
     touch "$target_cfg/.katapult_${target}_installed" 2>/dev/null || true
-    touch "$USER_HOME/.katapult_${target}_installed" 2>/dev/null || true
-    if [[ -d "/home/mks" ]]; then
-        touch "/home/mks/.katapult_${target}_installed" 2>/dev/null || true
+    if [[ "${SIM_MODE:-0}" != "1" ]]; then
+        touch "$USER_HOME/.katapult_${target}_installed" 2>/dev/null || true
+        if [[ -d "/home/mks" ]]; then
+            touch "/home/mks/.katapult_${target}_installed" 2>/dev/null || true
+        fi
     fi
+}
+
+# ==============================================================================
+# HELPER: DEPLOY CORE HARDWARE CONFIGS WHILE PRESERVING SERIALS & STATE
+# ==============================================================================
+deploy_core_configs() {
+    local target_cfg="$1"
+    echo -e "${CYAN}[*] Deploying core hardware configuration to ${target_cfg} (keeping your macros & serials safe)...${NC}"
+    mkdir -p "$target_cfg"
+
+    # Preserve existing serials and feature flags if printer.cfg / mmu.cfg already exist
+    local old_mcu_serial=""
+    local old_mmu_serial=""
+    local old_mmu_enabled="0"
+    local old_spoolman_enabled="0"
+
+    if [[ -f "$target_cfg/printer.cfg" ]]; then
+        old_mcu_serial=$(python3 -c '
+import re, sys
+with open(sys.argv[1], "r") as f:
+    c = f.read()
+m = re.search(r"\[mcu\]\s*\n\s*serial\s*:\s*(\S+)", c)
+if m:
+    print(m.group(1).strip())
+' "$target_cfg/printer.cfg" 2>/dev/null || true)
+
+        if grep -Eq "^\s*\[include\s+mmu\.cfg\]" "$target_cfg/printer.cfg" 2>/dev/null; then
+            old_mmu_enabled="1"
+        fi
+        if grep -Eq "^\s*\[include\s+sync_spoolman\.cfg\]" "$target_cfg/printer.cfg" 2>/dev/null; then
+            old_spoolman_enabled="1"
+        fi
+    fi
+
+    if [[ -f "$target_cfg/moonraker.conf" ]] && grep -Eq "^\s*\[spoolman\]" "$target_cfg/moonraker.conf" 2>/dev/null; then
+        old_spoolman_enabled="1"
+    fi
+
+    if [[ -f "$target_cfg/mmu/base/mmu.cfg" ]]; then
+        old_mmu_serial=$(python3 -c '
+import re, sys
+with open(sys.argv[1], "r") as f:
+    c = f.read()
+m = re.search(r"\[mcu\s+mmu\]\s*\n\s*serial\s*:\s*(\S+)", c)
+if m:
+    print(m.group(1).strip())
+' "$target_cfg/mmu/base/mmu.cfg" 2>/dev/null || true)
+    fi
+
+    for item in printer.cfg autotune_tmc.cfg timelapse.cfg plr.cfg MCU_ID.cfg gcode_macro_basic.cfg mmu mmu.cfg mmu_custom_actions.cfg mmu_ui_bridge.cfg sync_spoolman.cfg; do
+        if [[ -e "$SUITE_ROOT/configs/$item" ]]; then
+            cp -rp "$SUITE_ROOT/configs/$item" "$target_cfg/"
+        fi
+    done
+
+    # Copy state/service configs only if missing so user data is never wiped
+    for item in saved_variables.cfg moonraker.conf crowsnest.conf; do
+        if [[ ! -f "$target_cfg/$item" && -f "$SUITE_ROOT/configs/$item" ]]; then
+            cp -p "$SUITE_ROOT/configs/$item" "$target_cfg/"
+        fi
+    done
+
+    # Ensure [save_variables] points to the active target_cfg path
+    if [[ -f "$target_cfg/printer.cfg" ]]; then
+        sed -i "s|filename\s*=.*saved_variables.cfg|filename = ${target_cfg}/saved_variables.cfg|g" "$target_cfg/printer.cfg"
+    fi
+
+    # Restore previously configured MCU serial if present
+    if [[ -n "$old_mcu_serial" && -f "$target_cfg/printer.cfg" ]]; then
+        python3 - << PYEOF
+import re
+p = "$target_cfg/printer.cfg"
+with open(p, "r") as f:
+    c = f.read()
+c = re.sub(r"(\[mcu\]\s*\n\s*serial\s*:\s*).*(\n)", r"\g<1>${old_mcu_serial}\2", c)
+with open(p, "w") as f:
+    f.write(c)
+PYEOF
+        if [[ -f "$target_cfg/MCU_ID.cfg" ]]; then
+            sed -i "s|serial:.*|serial: ${old_mcu_serial}|g" "$target_cfg/MCU_ID.cfg"
+        fi
+    fi
+
+    # Restore previously configured MMU serial if present
+    if [[ -n "$old_mmu_serial" ]]; then
+        for mmu_cfg in "$target_cfg/mmu/base/mmu.cfg" "$target_cfg/mmu/base/mmu_hardware.cfg"; do
+            if [[ -f "$mmu_cfg" ]]; then
+                sed -i "s|serial:.*|serial: ${old_mmu_serial}|g" "$mmu_cfg"
+            fi
+        done
+    fi
+
+    # Restore MMU / Spoolman enabled state in printer.cfg
+    if [[ "$old_mmu_enabled" == "1" ]]; then
+        enable_mmu_in_config "$target_cfg/printer.cfg" >/dev/null 2>&1 || true
+    elif [[ "$old_spoolman_enabled" == "1" ]]; then
+        sed -i 's|^#\s*\[include sync_spoolman.cfg\]|[include sync_spoolman.cfg]|g' "$target_cfg/printer.cfg" 2>/dev/null || true
+    fi
+
+    # Keep user's macros by default until they run Option 4 (unless Pucci's macros are already installed)
+    if [[ ! -d "$target_cfg/START-END-PAUSE-CANCEL" ]]; then
+        bash "$SCRIPT_DIR/manage_macros.sh" --keep-silent || true
+    fi
+    chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
 }
 
 # ==============================================================================
@@ -277,23 +387,11 @@ install_printer_firmware() {
     echo ""
 
     sync_loadcell_drivers
-
-    # Deploy core hardware configuration files while preserving user's existing macros
-    echo -e "${CYAN}[*] Deploying core hardware configuration to ${target_cfg} (keeping your macros safe)...${NC}"
-    mkdir -p "$target_cfg"
-    for item in printer.cfg autotune_tmc.cfg timelapse.cfg plr.cfg MCU_ID.cfg gcode_macro_basic.cfg mmu mmu.cfg mmu_custom_actions.cfg mmu_ui_bridge.cfg sync_spoolman.cfg; do
-        if [[ -e "$SUITE_ROOT/configs/$item" ]]; then
-            cp -rp "$SUITE_ROOT/configs/$item" "$target_cfg/"
-        fi
-    done
-    # Keep user's macros by default until they run Option 3 (unless Pucci's macros are already installed)
-    if [[ ! -d "$target_cfg/START-END-PAUSE-CANCEL" ]]; then
-        bash "$SCRIPT_DIR/manage_macros.sh" --keep-silent || true
-    fi
-    chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
+    deploy_core_configs "$target_cfg"
 
     echo -e "${CYAN}[*] Stopping Klipper temporarily so we can talk to the boards...${NC}"
     systemctl stop klipper 2>/dev/null || true
+    export KLIPPER_STOPPED=1
 
     # --------------------------------------------------------------------------
     # PART A: MOTION MAINBOARD MCU (GD32F425)
@@ -318,8 +416,8 @@ install_printer_firmware() {
             0) mb_state="2" ;; # Katapult direct
             1) mb_state="3" ;; # Skip
             2) mb_state="1" ;; # Force SD deployer
-            3|b|back|menu|m) return 0 ;;
-            4|q|quit|exit) exit 0 ;;
+            3|b|back|menu|m) return 10 ;;
+            4|q|quit|exit) nav_quit ;;
             *) mb_state="2" ;;
         esac
     else
@@ -339,8 +437,8 @@ install_printer_firmware() {
             0) mb_state="1" ;; # Super-Stock SD deployer
             1) mb_state="2" ;; # Katapult direct
             2) mb_state="3" ;; # Skip
-            3|b|back|menu|m) return 0 ;;
-            4|q|quit|exit) exit 0 ;;
+            3|b|back|menu|m) return 10 ;;
+            4|q|quit|exit) nav_quit ;;
             *) mb_state="1" ;;
         esac
     fi
@@ -372,8 +470,8 @@ install_printer_firmware() {
         case "$sd_res" in
             0) mb_state="2" ;;
             1) mb_state="3" ;;
-            2|b|back|menu|m) return 0 ;;
-            3|q|quit|exit) exit 0 ;;
+            2|b|back|menu|m) return 10 ;;
+            3|q|quit|exit) nav_quit ;;
             *) mb_state="3" ;;
         esac
     fi
@@ -440,8 +538,8 @@ PYEOF
             0) thr_state="2" ;; # Direct flash thr.bin
             1) thr_state="3" ;; # Skip
             2) thr_state="1" ;; # Force re-deploy
-            3|b|back|menu|m) return 0 ;;
-            4|q|quit|exit) exit 0 ;;
+            3|b|back|menu|m) return 10 ;;
+            4|q|quit|exit) nav_quit ;;
             *) thr_state="2" ;;
         esac
     else
@@ -463,8 +561,8 @@ PYEOF
             0) thr_state="1" ;; # Stock auto-deployer
             1) thr_state="2" ;; # Direct flash
             2) thr_state="3" ;; # Skip
-            3|b|back|menu|m) return 0 ;;
-            4|q|quit|exit) exit 0 ;;
+            3|b|back|menu|m) return 10 ;;
+            4|q|quit|exit) nav_quit ;;
             *) thr_state="1" ;;
         esac
     fi
@@ -513,9 +611,12 @@ PYEOF
         sed -i '/\[mcu THR\]/,/\[/ s|baud:.*|baud: 500000|' "$target_cfg/printer.cfg"
     fi
 
+    chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
+
     echo ""
     echo -e "${CYAN}[*] Starting Klipper service...${NC}"
     systemctl start klipper 2>/dev/null || true
+    export KLIPPER_STOPPED=0
     echo -e "${GREEN}${BOLD}[✓] Printer Firmware (Motion MCU + Toolhead) Setup Complete!${NC}"
 }
 
@@ -552,9 +653,9 @@ install_box_firmware() {
             1) box_opt="3" ;; # Config only
             2) box_opt="1" ;; # Force re-deploy Katapult
             3) box_opt="4" ;; # Disable MMU
-            4|b|back|menu|m) return 0 ;;
-            5|q|quit|exit) exit 0 ;;
-            *) return 0 ;;
+            4|b|back|menu|m) return 10 ;;
+            5|q|quit|exit) nav_quit ;;
+            *) return 10 ;;
         esac
     else
         local box_items=(
@@ -580,15 +681,24 @@ install_box_firmware() {
             1) box_opt="2" ;;
             2) box_opt="3" ;;
             3) box_opt="4" ;;
-            4|b|back|menu|m) return 0 ;;
-            5|q|quit|exit) exit 0 ;;
-            *) return 0 ;;
+            4|b|back|menu|m) return 10 ;;
+            5|q|quit|exit) nav_quit ;;
+            *) return 10 ;;
         esac
     fi
+
+    # Ensure MMU config files exist in target_cfg
+    mkdir -p "$target_cfg"
+    for item in mmu mmu.cfg mmu_custom_actions.cfg mmu_ui_bridge.cfg sync_spoolman.cfg; do
+        if [[ ! -e "$target_cfg/$item" && -e "$SUITE_ROOT/configs/$item" ]]; then
+            cp -rp "$SUITE_ROOT/configs/$item" "$target_cfg/"
+        fi
+    done
 
     case "$box_opt" in
         1|2)
             systemctl stop klipper 2>/dev/null || true
+            export KLIPPER_STOPPED=1
             local mmu_dev=""
             local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
             if mmu_dev=$(select_usb_device "Select your Qidi Box USB Serial Port (usually stm32f401xc):"); then
@@ -625,19 +735,25 @@ install_box_firmware() {
             fi
             # Enable MMU in printer.cfg
             enable_mmu_in_config "$target_cfg/printer.cfg"
+            chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
             systemctl start klipper 2>/dev/null || true
+            export KLIPPER_STOPPED=0
             ;;
         3)
             mark_katapult_installed "mmu"
             enable_mmu_in_config "$target_cfg/printer.cfg"
+            chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
             systemctl restart klipper 2>/dev/null || true
+            export KLIPPER_STOPPED=0
             ;;
         4)
             disable_mmu_in_config "$target_cfg/printer.cfg"
+            chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
             systemctl restart klipper 2>/dev/null || true
+            export KLIPPER_STOPPED=0
             ;;
         *)
-            return 0
+            return 10
             ;;
     esac
 }
@@ -682,16 +798,26 @@ disable_mmu_in_config() {
     local cfg_file="$1"
     [[ ! -f "$cfg_file" ]] && return 0
     python3 - << PYEOF
-import re
+import os, re
 p = "$cfg_file"
 with open(p, "r") as f:
     c = f.read()
-block = """# <MMU_SUITE_START>
+
+cfg_dir = os.path.dirname(p)
+mr_path = os.path.join(cfg_dir, "moonraker.conf")
+spoolman_line = "#[include sync_spoolman.cfg]"
+if os.path.isfile(mr_path):
+    with open(mr_path, "r") as mf:
+        mc = mf.read()
+    if re.search(r"^\s*\[spoolman\]", mc, re.MULTILINE):
+        spoolman_line = "[include sync_spoolman.cfg]"
+
+block = f"""# <MMU_SUITE_START>
 # Qidi Box MMU Disabled (Standalone Single-Extruder Mode)
 #[include mmu.cfg]
 #[include mmu_custom_actions.cfg]
 #[include mmu_ui_bridge.cfg]
-#[include sync_spoolman.cfg]
+{spoolman_line}
 # <MMU_SUITE_END>"""
 if "# <MMU_SUITE_START>" in c:
     c = re.sub(r"# <MMU_SUITE_START>.*?# <MMU_SUITE_END>", block, c, flags=re.DOTALL)
@@ -724,8 +850,8 @@ case "${1:-}" in
         case "$fw_res" in
             0) install_printer_firmware ;;
             1) install_box_firmware ;;
-            2|b|back|menu|m) exit 0 ;;
-            3|q|quit|exit) exit 0 ;;
+            2|b|back|menu|m) exit 10 ;;
+            3|q|quit|exit) nav_quit ;;
         esac
         ;;
 esac

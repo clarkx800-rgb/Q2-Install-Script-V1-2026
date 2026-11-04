@@ -24,6 +24,44 @@ REV='\033[7m'
 NC='\033[0m'
 
 # ==============================================================================
+# 0. AP BOARD USER & HOME DIRECTORY RESOLUTION
+# ==============================================================================
+# On the Qidi Q2 AP board, users often SSH directly as 'root' (where SUDO_USER is
+# empty) while Klipper/Moonraker run as 'mks' (/home/mks). This helper ensures
+# configs and backups always belong to 'mks' on the AP board.
+resolve_ap_user() {
+    REAL_USER="${SUDO_USER:-${USER:-root}}"
+    if [[ "$REAL_USER" == "root" ]] && id -u mks >/dev/null 2>&1 && [[ -d "/home/mks" ]]; then
+        REAL_USER="mks"
+    fi
+    USER_HOME=$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6 || true)
+    if [[ -z "$USER_HOME" || ! -d "$USER_HOME" ]]; then
+        USER_HOME=$(eval echo "~$REAL_USER" 2>/dev/null || echo "/home/mks")
+    fi
+    BACKUP_ROOT_DIR="${SIM_BACKUP_ROOT:-$USER_HOME/q2_ap_backups}"
+    export REAL_USER USER_HOME BACKUP_ROOT_DIR
+}
+resolve_ap_user
+
+nav_quit() {
+    cleanup_on_exit
+    echo -e "\n${GREEN}${BOLD}Exiting installer. Goodbye!${NC}" >&2
+    if [[ "${INSTALLER_CHILD:-0}" == "1" ]]; then
+        exit 20
+    else
+        exit 0
+    fi
+}
+
+cleanup_on_exit() {
+    tput cnorm >&2 2>/dev/null || true
+    if [[ "${KLIPPER_STOPPED:-0}" == "1" ]]; then
+        systemctl start klipper 2>/dev/null || true
+        KLIPPER_STOPPED=0
+    fi
+}
+
+# ==============================================================================
 # 1. ARROW MENU: Select from a list of options with Up/Down arrows & '>' chevron
 # ==============================================================================
 # Usage:
@@ -56,7 +94,7 @@ arrow_menu() {
                 if [[ "$raw_choice" =~ ^[0-9]+$ ]] && [[ "$raw_choice" -ge 1 ]] && [[ "$raw_choice" -le "$count" ]]; then
                     echo "$((raw_choice - 1))"
                 elif [[ -z "$raw_choice" ]]; then
-                    echo "quit"
+                    echo "$selected"
                 else
                     echo "$raw_choice"
                 fi
@@ -67,7 +105,7 @@ arrow_menu() {
 
     # Interactive TTY Mode
     tput civis >&2 2>/dev/null || true
-    trap 'tput cnorm >&2 2>/dev/null || true' EXIT INT TERM
+    trap 'cleanup_on_exit' EXIT INT TERM
 
     while true; do
         clear >&2 2>/dev/null || true
@@ -84,7 +122,11 @@ arrow_menu() {
         echo "" >&2
 
         local key=""
-        IFS= read -rsn1 key
+        if ! IFS= read -rsn1 key; then
+            tput cnorm >&2 2>/dev/null || true
+            echo "quit"
+            return 0
+        fi
         if [[ "$key" == $'\x1b' ]]; then
             local rest=""
             read -rsn2 -t 0.1 rest || rest=""
@@ -176,13 +218,14 @@ prompt_nav_input() {
         echo -e "${DIM}Default: [${BOLD}${default_val}${NC}${DIM}] (Press ENTER to use default)${NC}" >&2
     fi
 
-    read -rp "👉 ${prompt_msg}: " user_val
+    if ! read -rp "👉 ${prompt_msg}: " user_val; then
+        nav_quit
+    fi
 
     # Check navigation commands
     case "${user_val,,}" in
         q|quit|exit)
-            echo -e "\n${GREEN}${BOLD}Exiting installer. Goodbye!${NC}" >&2
-            exit 0
+            nav_quit
             ;;
         b|back)
             echo "back"
@@ -207,13 +250,16 @@ prompt_nav_input() {
 # 4. PAUSE / RETURN TO MENU HELPER
 # ==============================================================================
 nav_pause() {
+    local custom_msg="${1:-Press ENTER to continue (or 'b' for back, 'm' for menu, 'q' to exit):}"
     echo ""
     local p_in=""
-    read -rp "👉 Press ENTER to continue (or 'b' for back, 'm' for menu, 'q' to exit): " p_in || true
+    read -rp "👉 ${custom_msg} " p_in || true
     case "${p_in,,}" in
         q|quit|exit)
-            echo -e "\n${GREEN}${BOLD}Exiting installer. Goodbye!${NC}"
-            exit 0
+            nav_quit
+            ;;
+        m|menu)
+            return 10
             ;;
         *)
             return 0

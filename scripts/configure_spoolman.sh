@@ -12,9 +12,6 @@ SUITE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/ui_nav.sh"
 
-REAL_USER="${SUDO_USER:-$USER}"
-USER_HOME=$(eval echo "~$REAL_USER")
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -27,10 +24,10 @@ get_target_config_dir() {
         echo "$SIM_CONFIG_DIR"
         return 0
     fi
-    if [[ -d "$USER_HOME/printer_data/config" ]]; then
-        echo "$USER_HOME/printer_data/config"
-    elif [[ -d "/home/mks/printer_data/config" ]]; then
+    if [[ -d "/home/mks/printer_data/config" ]]; then
         echo "/home/mks/printer_data/config"
+    elif [[ -d "$USER_HOME/printer_data/config" ]]; then
+        echo "$USER_HOME/printer_data/config"
     elif [[ -d "/home/mks/klipper_config" ]]; then
         echo "/home/mks/klipper_config"
     else
@@ -76,16 +73,33 @@ configure_spoolman_interactive() {
                 [[ "$sp_ip" == "back" || "$sp_ip" == "menu" ]] && return 10
             done
 
+            # Sanitize user input in case they pasted http://ip:port/
+            sp_ip=$(echo "$sp_ip" | sed -E 's|^https?://||; s|/.*$||' | tr -d '[:space:]')
+            local default_port="7912"
+            if [[ "$sp_ip" == *:* ]]; then
+                default_port="${sp_ip##*:}"
+                sp_ip="${sp_ip%%:*}"
+            fi
+
             local sp_port
-            sp_port=$(prompt_nav_input "Enter Spoolman Port" "7912")
+            sp_port=$(prompt_nav_input "Enter Spoolman Port" "$default_port")
             [[ "$sp_port" == "back" || "$sp_port" == "menu" ]] && return 10
             sp_port=$(echo "$sp_port" | tr -d '[:space:]')
-            [[ -z "$sp_port" ]] && sp_port="7912"
+            [[ -z "$sp_port" ]] && sp_port="$default_port"
 
             # Prompt user to name a backup restore point
-            bash "$SCRIPT_DIR/backup_machine.sh" "enable_spoolman"
+            local bkp_st=0
+            bash "$SCRIPT_DIR/backup_machine.sh" "enable_spoolman" || bkp_st=$?
+            if [[ $bkp_st -eq 20 ]]; then
+                exit 20
+            elif [[ $bkp_st -ne 0 ]]; then
+                return 10
+            fi
 
             echo -e "${CYAN}[*] Updating Moonraker & Klipper with Spoolman at http://${sp_ip}:${sp_port}...${NC}"
+            mkdir -p "$target_cfg"
+            [[ ! -f "$moonraker_cfg" && -f "$SUITE_ROOT/configs/moonraker.conf" ]] && cp -p "$SUITE_ROOT/configs/moonraker.conf" "$moonraker_cfg" || true
+            [[ ! -f "$target_cfg/sync_spoolman.cfg" && -f "$SUITE_ROOT/configs/sync_spoolman.cfg" ]] && cp -p "$SUITE_ROOT/configs/sync_spoolman.cfg" "$target_cfg/sync_spoolman.cfg" || true
 
             python3 - << PYEOF
 import os, re
@@ -116,7 +130,10 @@ if os.path.isfile(printer_path):
     with open(printer_path, "r") as f:
         p = f.read()
 
-    p = p.replace("#[include sync_spoolman.cfg]", "[include sync_spoolman.cfg]")
+    if re.search(r"#\s*\[include\s+sync_spoolman\.cfg\]", p):
+        p = re.sub(r"#\s*\[include\s+sync_spoolman\.cfg\]", "[include sync_spoolman.cfg]", p)
+    elif "[include sync_spoolman.cfg]" not in p:
+        p = "[include sync_spoolman.cfg]\n" + p
     with open(printer_path, "w") as f:
         f.write(p)
 PYEOF
@@ -132,7 +149,13 @@ PYEOF
             ;;
         1)
             # Prompt user to name a backup restore point
-            bash "$SCRIPT_DIR/backup_machine.sh" "disable_spoolman"
+            local bkp_st=0
+            bash "$SCRIPT_DIR/backup_machine.sh" "disable_spoolman" || bkp_st=$?
+            if [[ $bkp_st -eq 20 ]]; then
+                exit 20
+            elif [[ $bkp_st -ne 0 ]]; then
+                return 10
+            fi
 
             echo -e "${CYAN}[*] Disabling Spoolman in Moonraker & Klipper...${NC}"
 
@@ -162,7 +185,7 @@ if os.path.isfile(printer_path):
     with open(printer_path, "r") as f:
         p = f.read()
 
-    p = re.sub(r"(?<!#)\[include sync_spoolman\.cfg\]", "#[include sync_spoolman.cfg]", p)
+    p = re.sub(r"(?<!#)\[include\s+sync_spoolman\.cfg\]", "#[include sync_spoolman.cfg]", p)
     with open(printer_path, "w") as f:
         f.write(p)
 PYEOF
@@ -179,7 +202,7 @@ PYEOF
             return 10
             ;;
         3|q|quit|exit)
-            exit 0
+            nav_quit
             ;;
     esac
 }

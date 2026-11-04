@@ -9,9 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/scripts/ui_nav.sh"
 
 PRESET_MODE="${1:-}"
-REAL_USER="${SUDO_USER:-$USER}"
-USER_HOME=$(eval echo "~$REAL_USER")
-BACKUP_ROOT_DIR="${SIM_BACKUP_ROOT:-$USER_HOME/q2_ap_backups}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -62,62 +59,80 @@ b_header+="${BOLD} 🔄 QIDI Q2 AP BOARD — UNIVERSAL NAMED-BACKUP RESTORE CENT
 b_header+="${CYAN}======================================================================${NC}\n"
 b_header+="Select which backup snapshot you want to restore from:"
 
-b_res=$(arrow_menu "$b_header" b_items 0)
-selected_dir=""
+while true; do
+    b_res=$(arrow_menu "$b_header" b_items 0)
+    selected_dir=""
 
-case "$b_res" in
-    back|b|menu|m) exit 0 ;;
-    quit|q|exit) exit 0 ;;
-    *)
-        if [[ "$b_res" =~ ^[0-9]+$ ]]; then
-            if [[ "$b_res" -lt "$total" ]]; then
-                selected_dir="${backups[$b_res]}"
-            elif [[ "$b_res" -eq "$total" ]]; then
-                exit 0 # Back
+    case "$b_res" in
+        back|b|menu|m) exit 10 ;;
+        quit|q|exit) nav_quit ;;
+        *)
+            if [[ "$b_res" =~ ^[0-9]+$ ]]; then
+                if [[ "$b_res" -lt "$total" ]]; then
+                    selected_dir="${backups[$b_res]}"
+                elif [[ "$b_res" -eq "$total" ]]; then
+                    exit 10 # Back
+                else
+                    nav_quit # Exit
+                fi
             else
-                exit 0 # Exit
+                exit 10
             fi
-        else
+            ;;
+    esac
+
+    if [[ -n "$PRESET_MODE" ]]; then
+        bash "$selected_dir/restore.sh" "$PRESET_MODE"
+        exit 0
+    fi
+
+    scope_items=(
+        "[1] 100% Everything (Configs, Macros, Network, AP Board, and Kernel if saved)"
+        "[2] Restore Klipper Configs & Macros Only"
+        "[3] Restore Network Adapter Settings Only"
+        "[4] Restore AP Board CPU & Disk Settings Only"
+        "[5] Restore Factory Linux Kernel (boot partition) Only"
+        "[b] ⬅️  Back to Backup Selection"
+        "[q] 🚪 Exit Installer"
+    )
+
+    scope_header="${CYAN}${BOLD}======================================================================${NC}\n"
+    scope_header+="${BOLD} What would you like to restore from backup: $(basename "$selected_dir")?${NC}\n"
+    scope_header+="${CYAN}======================================================================${NC}"
+    scope_res=$(arrow_menu "$scope_header" scope_items 0)
+
+    case "$scope_res" in
+        0)
+            bash "$selected_dir/restore.sh" --full
             exit 0
-        fi
-        ;;
-esac
-
-if [[ -n "$PRESET_MODE" ]]; then
-    bash "$selected_dir/restore.sh" "$PRESET_MODE"
-    exit 0
-fi
-
-scope_items=(
-    "[1] 100% Everything (Configs, Macros, Network, AP Board, and Kernel if saved)"
-    "[2] Restore Klipper Configs & Macros Only"
-    "[3] Restore Network Adapter Settings Only"
-    "[4] Restore AP Board CPU & Disk Settings Only"
-    "[5] Restore Factory Linux Kernel (boot partition) Only"
-    "[b] ⬅️  Back to Backup Selection"
-    "[q] 🚪 Exit Installer"
-)
-
-scope_header="What would you like to restore from backup: $(basename "$selected_dir")?"
-scope_res=$(arrow_menu "$scope_header" scope_items 0)
-
-case "$scope_res" in
-    0)
-        bash "$selected_dir/restore.sh" --full
-        ;;
-    1)
-        bash "$selected_dir/restore.sh" --macros-only
-        ;;
-    2)
-        bash "$selected_dir/restore.sh" --network-only
-        ;;
-    3)
-        bash "$selected_dir/restore.sh" --ap-only
-        ;;
-    4)
-        bash "$selected_dir/restore.sh" --kernel-only
-        ;;
-    *)
-        echo "Restore cancelled."
-        ;;
-esac
+            ;;
+        1)
+            bash "$selected_dir/restore.sh" --macros-only
+            exit 0
+            ;;
+        2)
+            bash "$selected_dir/restore.sh" --network-only
+            exit 0
+            ;;
+        3)
+            bash "$selected_dir/restore.sh" --ap-only
+            exit 0
+            ;;
+        4)
+            bash "$selected_dir/restore.sh" --kernel-only
+            exit 0
+            ;;
+        5|b|back)
+            continue
+            ;;
+        menu|m)
+            exit 10
+            ;;
+        6|q|quit|exit)
+            nav_quit
+            ;;
+        *)
+            continue
+            ;;
+    esac
+done

@@ -14,10 +14,6 @@ SUITE_CONFIGS="$SUITE_ROOT/configs"
 
 source "$SCRIPT_DIR/ui_nav.sh"
 
-REAL_USER="${SUDO_USER:-$USER}"
-USER_HOME=$(eval echo "~$REAL_USER")
-BACKUP_ROOT_DIR="${SIM_BACKUP_ROOT:-$USER_HOME/q2_ap_backups}"
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -31,10 +27,10 @@ get_target_config_dir() {
         echo "$SIM_CONFIG_DIR"
         return 0
     fi
-    if [[ -d "$USER_HOME/printer_data/config" ]]; then
-        echo "$USER_HOME/printer_data/config"
-    elif [[ -d "/home/mks/printer_data/config" ]]; then
+    if [[ -d "/home/mks/printer_data/config" ]]; then
         echo "/home/mks/printer_data/config"
+    elif [[ -d "$USER_HOME/printer_data/config" ]]; then
+        echo "$USER_HOME/printer_data/config"
     elif [[ -d "/home/mks/klipper_config" ]]; then
         echo "/home/mks/klipper_config"
     else
@@ -48,7 +44,13 @@ install_pucci_macros() {
     target_cfg=$(get_target_config_dir)
 
     # 1. Prompt user to name their backup before touching macros
-    bash "$SCRIPT_DIR/backup_machine.sh" "install_pucci_macros"
+    local bkp_st=0
+    bash "$SCRIPT_DIR/backup_machine.sh" "install_pucci_macros" || bkp_st=$?
+    if [[ $bkp_st -eq 20 ]]; then
+        exit 20
+    elif [[ $bkp_st -ne 0 ]]; then
+        return 10
+    fi
 
     echo -e "${CYAN}[*] Installing Pucci's Advanced Print Lifecycle Macros into ${target_cfg}...${NC}"
     mkdir -p "$target_cfg"
@@ -93,8 +95,8 @@ PYEOF
     echo -e "${GREEN}${BOLD}[✓] YES Selected: Pucci's Macros Installed & Activated!${NC}"
     echo -e "    • Automatic Bed Tramming, Chamber Thermal Soak, Wiper Polish, and"
     echo -e "      Blade Cut macros are now active."
-    echo -e "    • Check ${BOLD}SLICER_GUIDE.md${NC} (or Menu Option 9) for the matching Slicer G-Codes!"
-    echo -e "    • If you ever want your old macros back, just choose ${BOLD}Menu Option 4${NC}."
+    echo -e "    • Check ${BOLD}SLICER_GUIDE.md${NC} (or Menu Option 10) for the matching Slicer G-Codes!"
+    echo -e "    • If you ever want your old macros back, just choose ${BOLD}Menu Option 5${NC}."
 }
 
 keep_user_macros() {
@@ -104,7 +106,13 @@ keep_user_macros() {
 
     if [[ "$skip_backup" != "true" ]]; then
         # Prompt user to name their backup first
-        bash "$SCRIPT_DIR/backup_machine.sh" "keep_my_macros"
+        local bkp_st=0
+        bash "$SCRIPT_DIR/backup_machine.sh" "keep_my_macros" || bkp_st=$?
+        if [[ $bkp_st -eq 20 ]]; then
+            exit 20
+        elif [[ $bkp_st -ne 0 ]]; then
+            return 10
+        fi
     fi
 
     local latest_backup=""
@@ -119,6 +127,9 @@ keep_user_macros() {
     [[ ! -f "$target_cfg/gcode_macro_basic.cfg" && -f "$SUITE_CONFIGS/gcode_macro_basic.cfg" ]] && \
         cp -p "$SUITE_CONFIGS/gcode_macro_basic.cfg" "$target_cfg/gcode_macro_basic.cfg" || true
 
+    # Remove Pucci's macro folder if switching to user's own macros
+    rm -rf "$target_cfg/START-END-PAUSE-CANCEL" "$target_cfg/FAN-SETTINGS.cfg" "$target_cfg/nonlinear_pa.cfg" 2>/dev/null || true
+
     # Restore any custom macro .cfg files from the backup snapshot and detect user's macro includes
     python3 - << PYEOF
 import os, re, shutil
@@ -127,11 +138,30 @@ target_cfg = "$target_cfg"
 backup_cfg = os.path.join("$latest_backup", "config") if "$latest_backup" else ""
 printer_cfg_path = os.path.join(target_cfg, "printer.cfg")
 
+protected_items = {
+    "START-END-PAUSE-CANCEL",
+    "FAN-SETTINGS.cfg",
+    "nonlinear_pa.cfg",
+    "printer.cfg",
+    "MCU_ID.cfg",
+    "mmu",
+    "mmu.cfg",
+    "mmu_custom_actions.cfg",
+    "mmu_ui_bridge.cfg",
+    "sync_spoolman.cfg",
+    "moonraker.conf",
+    "crowsnest.conf",
+    "saved_variables.cfg",
+    "autotune_tmc.cfg",
+    "timelapse.cfg",
+    "plr.cfg",
+    "MKS_THR.cfg",
+}
+
 user_includes = []
 if backup_cfg and os.path.isdir(backup_cfg):
-    pucci_items = {"START-END-PAUSE-CANCEL", "FAN-SETTINGS.cfg", "nonlinear_pa.cfg"}
     for item in os.listdir(backup_cfg):
-        if item in pucci_items or item == "printer.cfg":
+        if item in protected_items or item.startswith("."):
             continue
         src = os.path.join(backup_cfg, item)
         dst = os.path.join(target_cfg, item)
@@ -147,7 +177,7 @@ if backup_cfg and os.path.isdir(backup_cfg):
         with open(old_printer, "r") as f:
             for line in f:
                 s = line.strip()
-                if s.startswith("[include ") and not any(k in s for k in ["START-END-PAUSE-CANCEL", "FAN-SETTINGS.cfg", "nonlinear_pa.cfg", "mmu", "timelapse.cfg", "plr.cfg", "MKS_THR.cfg"]):
+                if s.startswith("[include ") and not any(k in s for k in ["START-END-PAUSE-CANCEL", "FAN-SETTINGS.cfg", "nonlinear_pa.cfg", "mmu", "sync_spoolman.cfg", "timelapse.cfg", "plr.cfg", "MKS_THR.cfg", "MCU_ID.cfg", "autotune_tmc.cfg"]):
                     user_includes.append(s)
 
 if not user_includes:
@@ -207,7 +237,7 @@ choose_macros_menu() {
             return 10
             ;;
         3|q|quit|exit)
-            exit 0
+            nav_quit
             ;;
     esac
 }
@@ -230,7 +260,7 @@ restore_macros_menu() {
     local backups=()
     local b_items=()
     while IFS= read -r dir; do
-        [[ ! -d "$dir" ]] && continue
+        [[ ! -d "$dir" || ! -f "$dir/restore.sh" ]] && continue
         backups+=("$dir")
         local b_name b_date b_cat
         b_name=$(grep -E '^BACKUP_NAME=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || basename "$dir")
@@ -253,66 +283,96 @@ restore_macros_menu() {
     b_header+="${CYAN}======================================================================${NC}\n"
     b_header+="Select which backup to restore macros from:"
 
-    local b_res
-    b_res=$(arrow_menu "$b_header" b_items 0)
-    local selected_backup=""
+    while true; do
+        local b_res
+        b_res=$(arrow_menu "$b_header" b_items 0)
+        local selected_backup=""
 
-    case "$b_res" in
-        back|b|menu|m) return 10 ;;
-        quit|q|exit) exit 0 ;;
-        *)
-            if [[ "$b_res" =~ ^[0-9]+$ ]]; then
-                if [[ "$b_res" -lt "$total" ]]; then
-                    selected_backup="${backups[$b_res]}"
-                elif [[ "$b_res" -eq "$total" ]]; then
-                    return 10 # Back
+        case "$b_res" in
+            back|b|menu|m) return 10 ;;
+            quit|q|exit) nav_quit ;;
+            *)
+                if [[ "$b_res" =~ ^[0-9]+$ ]]; then
+                    if [[ "$b_res" -lt "$total" ]]; then
+                        selected_backup="${backups[$b_res]}"
+                    elif [[ "$b_res" -eq "$total" ]]; then
+                        return 10 # Back
+                    else
+                        nav_quit # Exit
+                    fi
                 else
-                    exit 0 # Exit
+                    return 10
                 fi
-            else
-                return 10
-            fi
-            ;;
-    esac
+                ;;
+        esac
 
-    local scope_items=(
-        "[1] Restore ONLY my previous macros (Keep upgraded hardware printer.cfg & serial IDs)"
-        "[2] Restore the ENTIRE config folder (printer.cfg + all macros) from this backup"
-        "[b] ⬅️  Back to Backup Selection"
-        "[q] 🚪 Exit Installer"
-    )
-    local scope_header="How would you like to restore from backup: $(basename "$selected_backup")?"
-    local scope_res
-    scope_res=$(arrow_menu "$scope_header" scope_items 0)
-    local r_type="1"
+        local scope_items=(
+            "[1] Restore ONLY my previous macros (Keep upgraded hardware printer.cfg & serial IDs)"
+            "[2] Restore the ENTIRE config folder (printer.cfg + all macros) from this backup"
+            "[b] ⬅️  Back to Backup Selection"
+            "[q] 🚪 Exit Installer"
+        )
+        local scope_header="${CYAN}${BOLD}======================================================================${NC}\n"
+        scope_header+="${BOLD} How would you like to restore from backup: $(basename "$selected_backup")?${NC}\n"
+        scope_header+="${CYAN}======================================================================${NC}"
+        local scope_res
+        scope_res=$(arrow_menu "$scope_header" scope_items 0)
+        local r_type="1"
 
-    case "$scope_res" in
-        0) r_type="1" ;;
-        1) r_type="2" ;;
-        2|b|back|menu|m) return 0 ;;
-        3|q|quit|exit) exit 0 ;;
-        *) r_type="1" ;;
-    esac
+        case "$scope_res" in
+            0) r_type="1" ;;
+            1) r_type="2" ;;
+            2|b|back) continue ;;
+            menu|m) return 10 ;;
+            3|q|quit|exit) nav_quit ;;
+            *) continue ;;
+        esac
 
-    # Prompt user to name a safety backup before restoring
-    bash "$SCRIPT_DIR/backup_machine.sh" "before_macro_restore"
+        # Prompt user to name a safety backup before restoring
+        local bkp_st=0
+        bash "$SCRIPT_DIR/backup_machine.sh" "before_macro_restore" || bkp_st=$?
+        if [[ $bkp_st -eq 20 ]]; then
+            exit 20
+        elif [[ $bkp_st -ne 0 ]]; then
+            continue
+        fi
 
-    if [[ "$r_type" == "2" ]]; then
-        bash "$selected_backup/restore.sh" --macros-only
-    else
-        echo -e "${CYAN}[*] Restoring your original macro files and macro includes from $(basename "$selected_backup")...${NC}"
-        python3 - << PYEOF
+        if [[ "$r_type" == "2" ]]; then
+            bash "$selected_backup/restore.sh" --macros-only
+        else
+            echo -e "${CYAN}[*] Restoring your original macro files and macro includes from $(basename "$selected_backup")...${NC}"
+            rm -rf "$target_cfg/START-END-PAUSE-CANCEL" "$target_cfg/FAN-SETTINGS.cfg" "$target_cfg/nonlinear_pa.cfg" 2>/dev/null || true
+            python3 - << PYEOF
 import os, re, shutil
 
 target_cfg = "$target_cfg"
 backup_cfg = os.path.join("$selected_backup", "config")
 printer_cfg_path = os.path.join(target_cfg, "printer.cfg")
 
+protected_items = {
+    "START-END-PAUSE-CANCEL",
+    "FAN-SETTINGS.cfg",
+    "nonlinear_pa.cfg",
+    "printer.cfg",
+    "MCU_ID.cfg",
+    "mmu",
+    "mmu.cfg",
+    "mmu_custom_actions.cfg",
+    "mmu_ui_bridge.cfg",
+    "sync_spoolman.cfg",
+    "moonraker.conf",
+    "crowsnest.conf",
+    "saved_variables.cfg",
+    "autotune_tmc.cfg",
+    "timelapse.cfg",
+    "plr.cfg",
+    "MKS_THR.cfg",
+}
+
 user_includes = []
 if os.path.isdir(backup_cfg):
-    pucci_items = {"START-END-PAUSE-CANCEL", "FAN-SETTINGS.cfg", "nonlinear_pa.cfg"}
     for item in os.listdir(backup_cfg):
-        if item in pucci_items or item == "printer.cfg":
+        if item in protected_items or item.startswith("."):
             continue
         src = os.path.join(backup_cfg, item)
         dst = os.path.join(target_cfg, item)
@@ -328,7 +388,7 @@ if os.path.isdir(backup_cfg):
         with open(old_printer, "r") as f:
             for line in f:
                 s = line.strip()
-                if s.startswith("[include ") and not any(k in s for k in ["START-END-PAUSE-CANCEL", "FAN-SETTINGS.cfg", "nonlinear_pa.cfg", "mmu", "timelapse.cfg", "plr.cfg", "MKS_THR.cfg"]):
+                if s.startswith("[include ") and not any(k in s for k in ["START-END-PAUSE-CANCEL", "FAN-SETTINGS.cfg", "nonlinear_pa.cfg", "mmu", "sync_spoolman.cfg", "timelapse.cfg", "plr.cfg", "MKS_THR.cfg", "MCU_ID.cfg", "autotune_tmc.cfg"]):
                     user_includes.append(s)
 
 if not user_includes:
@@ -350,15 +410,23 @@ else:
 with open(printer_cfg_path, "w") as f:
     f.write(c)
 PYEOF
-        chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
-        systemctl restart klipper 2>/dev/null || true
-        echo -e "${GREEN}${BOLD}[✓] Your previous macros have been restored and Klipper restarted!${NC}"
-    fi
+            chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
+            systemctl restart klipper 2>/dev/null || true
+            echo -e "${GREEN}${BOLD}[✓] Your previous macros have been restored and Klipper restarted!${NC}"
+        fi
+        return 0
+    done
 }
 
 case "${1:-}" in
     --choose)
         choose_macros_menu
+        ;;
+    --pucci)
+        install_pucci_macros
+        ;;
+    --keep)
+        keep_user_macros "false"
         ;;
     --keep-silent)
         keep_user_macros "true"

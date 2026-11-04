@@ -14,9 +14,6 @@ set -euo pipefail
 
 SUITE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="$SUITE_ROOT/scripts"
-REAL_USER="${SUDO_USER:-$USER}"
-USER_HOME=$(eval echo "~$REAL_USER")
-BACKUP_ROOT_DIR="$USER_HOME/q2_ap_backups"
 
 source "$SCRIPTS_DIR/ui_nav.sh"
 
@@ -59,6 +56,15 @@ case "${accept_risk,,}" in
         ;;
 esac
 
+run_child() {
+    local st=0
+    INSTALLER_CHILD=1 bash "$@" || st=$?
+    if [[ $st -eq 20 ]]; then
+        exit 0
+    fi
+    return $st
+}
+
 submenu_refinement() {
     local title="$1"
     local category="$2"
@@ -82,10 +88,8 @@ submenu_refinement() {
     case "$sub_res" in
         0)
             local bkp_st=0
-            bash "$SCRIPTS_DIR/backup_machine.sh" "$category" || bkp_st=$?
-            if [[ $bkp_st -eq 20 ]]; then
-                exit 0
-            elif [[ $bkp_st -ne 0 ]]; then
+            run_child "$SCRIPTS_DIR/backup_machine.sh" "$category" || bkp_st=$?
+            if [[ $bkp_st -ne 0 ]]; then
                 echo -e "${YELLOW}[*] Action cancelled. Returning to menu...${NC}"
                 sleep 1
                 return 0
@@ -95,25 +99,26 @@ submenu_refinement() {
                 local latest_bkp=""
                 [[ -f "$BACKUP_ROOT_DIR/.latest_backup_path" ]] && latest_bkp=$(cat "$BACKUP_ROOT_DIR/.latest_backup_path")
                 if [[ -n "$latest_bkp" && -f "$latest_bkp/system/factory_boot.img" ]]; then
-                    bash "$apply_script" "$latest_bkp/system/factory_boot.img"
+                    run_child "$apply_script" "$latest_bkp/system/factory_boot.img"
                 else
-                    bash "$apply_script"
+                    run_child "$apply_script"
                 fi
             else
-                bash "$apply_script"
+                run_child "$apply_script"
             fi
-            nav_pause
+            nav_pause || true
             ;;
         1)
-            bash "$SUITE_ROOT/restore.sh" "$restore_flag"
-            nav_pause
+            local rst_st=0
+            run_child "$SUITE_ROOT/restore.sh" "$restore_flag" || rst_st=$?
+            [[ $rst_st -eq 10 ]] && return 0
+            nav_pause || true
             ;;
         2|b|back|m|menu)
             return 0
             ;;
         3|q|quit|exit)
-            echo -e "${GREEN}${BOLD}Exiting installer. Goodbye!${NC}"
-            exit 0
+            nav_quit
             ;;
     esac
 }
@@ -145,39 +150,39 @@ while true; do
     case "$main_res" in
         0)
             bkp_st=0
-            bash "$SCRIPTS_DIR/backup_machine.sh" "printer_firmware" || bkp_st=$?
-            if [[ $bkp_st -eq 20 ]]; then exit 0; elif [[ $bkp_st -ne 0 ]]; then continue; fi
+            run_child "$SCRIPTS_DIR/backup_machine.sh" "printer_firmware" || bkp_st=$?
+            [[ $bkp_st -ne 0 ]] && continue
             local_st=0
-            bash "$SCRIPTS_DIR/flash_firmware.sh" --printer || local_st=$?
+            run_child "$SCRIPTS_DIR/flash_firmware.sh" --printer || local_st=$?
             [[ $local_st -eq 10 ]] && continue
-            nav_pause
+            nav_pause || true
             ;;
         1)
             bkp_st=0
-            bash "$SCRIPTS_DIR/backup_machine.sh" "qidi_box_firmware" || bkp_st=$?
-            if [[ $bkp_st -eq 20 ]]; then exit 0; elif [[ $bkp_st -ne 0 ]]; then continue; fi
+            run_child "$SCRIPTS_DIR/backup_machine.sh" "qidi_box_firmware" || bkp_st=$?
+            [[ $bkp_st -ne 0 ]] && continue
             local_st=0
-            bash "$SCRIPTS_DIR/flash_firmware.sh" --box || local_st=$?
+            run_child "$SCRIPTS_DIR/flash_firmware.sh" --box || local_st=$?
             [[ $local_st -eq 10 ]] && continue
-            nav_pause
+            nav_pause || true
             ;;
         2)
             local_st=0
-            bash "$SCRIPTS_DIR/configure_spoolman.sh" || local_st=$?
+            run_child "$SCRIPTS_DIR/configure_spoolman.sh" || local_st=$?
             [[ $local_st -eq 10 ]] && continue
-            nav_pause
+            nav_pause || true
             ;;
         3)
             local_st=0
-            bash "$SCRIPTS_DIR/manage_macros.sh" --choose || local_st=$?
+            run_child "$SCRIPTS_DIR/manage_macros.sh" --choose || local_st=$?
             [[ $local_st -eq 10 ]] && continue
-            nav_pause
+            nav_pause || true
             ;;
         4)
             local_st=0
-            bash "$SCRIPTS_DIR/manage_macros.sh" --restore || local_st=$?
+            run_child "$SCRIPTS_DIR/manage_macros.sh" --restore || local_st=$?
             [[ $local_st -eq 10 ]] && continue
-            nav_pause
+            nav_pause || true
             ;;
         5)
             submenu_refinement \
@@ -201,11 +206,15 @@ while true; do
                 "--kernel-only"
             ;;
         8)
-            bash "$SUITE_ROOT/restore.sh"
-            nav_pause
+            local_st=0
+            run_child "$SUITE_ROOT/restore.sh" || local_st=$?
+            [[ $local_st -eq 10 ]] && continue
+            nav_pause || true
             ;;
         9)
-            bash "$SCRIPTS_DIR/docs_menu.sh"
+            local_st=0
+            run_child "$SCRIPTS_DIR/docs_menu.sh" || local_st=$?
+            [[ $local_st -eq 10 ]] && continue
             ;;
         10|q|quit|exit)
             echo ""
