@@ -1,0 +1,2 @@
+# Disable power management for WiFi interface to eliminate ping jitter and websocket drops
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan*", RUN+="/sbin/iw dev %k set power_save off"

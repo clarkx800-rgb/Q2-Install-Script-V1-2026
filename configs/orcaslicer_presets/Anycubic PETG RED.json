@@ -1,0 +1,108 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"additional_cooling_fan_speed": [
+		"45"
+	],
+	"close_fan_the_first_x_layers": [
+		"2"
+	],
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#FF0000"
+	],
+	"during_print_exhaust_fan_speed": [
+		"35"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_cooling_layer_time": [
+		"30"
+	],
+	"fan_max_speed": [
+		"85"
+	],
+	"fan_min_speed": [
+		"50"
+	],
+	"filament_density": [
+		"1.23"
+	],
+	"filament_deretraction_speed": [
+		"35"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.965104"
+	],
+	"filament_retract_lift_below": [
+		"259"
+	],
+	"filament_retract_lift_enforce": [
+		"All Surfaces"
+	],
+	"filament_retract_when_changing_layer": [
+		"1"
+	],
+	"filament_retraction_length": [
+		"0.4"
+	],
+	"filament_retraction_minimum_travel": [
+		"1"
+	],
+	"filament_retraction_speed": [
+		"35"
+	],
+	"filament_settings_id": [
+		"Anycubic PETG RED"
+	],
+	"filament_wipe": [
+		"0"
+	],
+	"filament_z_hop": [
+		"0"
+	],
+	"filament_z_hop_types": [
+		"Auto Lift"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"77"
+	],
+	"hot_plate_temp_initial_layer": [
+		"77"
+	],
+	"inherits": "Generic PETG @System",
+	"name": "Anycubic PETG RED",
+	"nozzle_temperature": [
+		"246"
+	],
+	"nozzle_temperature_initial_layer": [
+		"246"
+	],
+	"nozzle_temperature_range_high": [
+		"250"
+	],
+	"overhang_fan_threshold": [
+		"10%"
+	],
+	"pressure_advance": [
+		"0.052"
+	],
+	"slow_down_layer_time": [
+		"12"
+	],
+	"slow_down_min_speed": [
+		"20"
+	],
+	"temperature_vitrification": [
+		"74"
+	],
+	"version": "2.3.0.4"
+}

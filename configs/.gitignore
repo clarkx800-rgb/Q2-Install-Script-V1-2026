@@ -1,0 +1,24 @@
+# Klipper dynamic runtime state
+saved_variables.cfg
+.moonraker.conf.bkp
+*.bak*
+*.save
+*.old
+*~
+__pycache__/
+*.pyc
+
+# Backup archives
+config_backups/
+**/cfg-baks/
+
+# HelixScreen runtime
+.helix_temp/
+.helix_print/
+helixscreen/crash_history.json
+helixscreen/.crash_restart_count
+helixscreen/.helix-screen.lock
+
+# Test logs
+10mm-retract-deretract-log.txt
+*.log

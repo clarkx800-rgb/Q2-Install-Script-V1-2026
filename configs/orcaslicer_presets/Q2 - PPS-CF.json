@@ -1,0 +1,87 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"activate_chamber_temp_control": [
+		"1"
+	],
+	"chamber_temperature": [
+		"65"
+	],
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#000000"
+	],
+	"during_print_exhaust_fan_speed": [
+		"11"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_max_speed": [
+		"25"
+	],
+	"fan_min_speed": [
+		"0"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.96"
+	],
+	"filament_max_volumetric_speed": [
+		"9"
+	],
+	"filament_settings_id": [
+		"Q2 - PPS-CF"
+	],
+	"filament_start_gcode": [
+		"; Filament gcode\nSAVE_VARIABLE VARIABLE=current_swap_temp VALUE=[nozzle_temperature_range_high]"
+	],
+	"filament_type": [
+		"PPS-CF"
+	],
+	"filament_vendor": [
+		"Eryone"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"105"
+	],
+	"hot_plate_temp_initial_layer": [
+		"109"
+	],
+	"inherits": "Bambu PET-CF @System",
+	"internal_bridge_fan_speed": [
+		"30"
+	],
+	"name": "Q2 - PPS-CF",
+	"nozzle_temperature": [
+		"350"
+	],
+	"nozzle_temperature_initial_layer": [
+		"350"
+	],
+	"nozzle_temperature_range_high": [
+		"350"
+	],
+	"nozzle_temperature_range_low": [
+		"320"
+	],
+	"overhang_fan_speed": [
+		"20"
+	],
+	"overhang_fan_threshold": [
+		"75%"
+	],
+	"pressure_advance": [
+		"0.03"
+	],
+	"temperature_vitrification": [
+		"240"
+	],
+	"version": "2.3.1.0"
+}

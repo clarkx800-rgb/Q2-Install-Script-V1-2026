@@ -1,0 +1,60 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"close_fan_the_first_x_layers": [
+		"2"
+	],
+	"compatible_printers": [
+		"MyKlipper 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#FF0000"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"filament_deretraction_speed": [
+		"35"
+	],
+	"filament_end_gcode": [
+		"; filament end gcode\nSET_GCODE_OFFSET Z=0"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.93"
+	],
+	"filament_max_volumetric_speed": [
+		"22"
+	],
+	"filament_retraction_length": [
+		"0.6"
+	],
+	"filament_retraction_speed": [
+		"35"
+	],
+	"filament_settings_id": [
+		"PolyLite PETG RED"
+	],
+	"filament_start_gcode": [
+		"; Filament gcode\nSET_GCODE_OFFSET Z=0.03"
+	],
+	"from": "Bundle",
+	"hot_plate_temp_initial_layer": [
+		"65"
+	],
+	"inherits": "PolyLite PETG @System",
+	"name": "PolyLite PETG RED",
+	"nozzle_temperature": [
+		"242"
+	],
+	"nozzle_temperature_initial_layer": [
+		"250"
+	],
+	"nozzle_temperature_range_high": [
+		"260"
+	],
+	"version": "2.3.2.60"
+}

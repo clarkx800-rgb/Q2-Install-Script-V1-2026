@@ -1,0 +1,60 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#303030"
+	],
+	"during_print_exhaust_fan_speed": [
+		"20"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_max_speed": [
+		"25"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.96"
+	],
+	"filament_max_volumetric_speed": [
+		"12"
+	],
+	"filament_settings_id": [
+		"Q2 PET-CF"
+	],
+	"filament_start_gcode": [
+		"; Filament gcode\nSAVE_VARIABLE VARIABLE=current_swap_temp VALUE=[nozzle_temperature_range_high]"
+	],
+	"filament_vendor": [
+		"Siraya"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"95"
+	],
+	"hot_plate_temp_initial_layer": [
+		"95"
+	],
+	"inherits": "Bambu PET-CF @System",
+	"name": "Q2 PET-CF",
+	"nozzle_temperature": [
+		"290"
+	],
+	"nozzle_temperature_initial_layer": [
+		"287"
+	],
+	"overhang_fan_threshold": [
+		"10%"
+	],
+	"pressure_advance": [
+		"0.027"
+	],
+	"version": "2.3.1.0"
+}

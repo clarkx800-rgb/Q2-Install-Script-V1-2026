@@ -1,0 +1,102 @@
+--- a/extras/mmu_stepper.py
++++ b/extras/mmu_stepper.py
+@@ -700,6 +700,10 @@ class MMUStepper(ExtruderStepper):
+
+     def _handle_connect(self):
+         super()._handle_connect()
++        printer_extruder = self.printer.lookup_object(self.name, None)
++        if isinstance(printer_extruder, PrinterExtruder):
++            if hasattr(printer_extruder, 'extruder_steppers') and self not in printer_extruder.extruder_steppers:
++                printer_extruder.extruder_steppers.append(self)
+         toolhead = self.printer.lookup_object('toolhead')
+         # Older klippys (e.g. Kalico) register the stepper as a toolhead
+         # step generator in super(); newer ones drive step generation
+@@ -762,6 +766,63 @@ class MMUStepper(ExtruderStepper):
+         hmove = HomingMove(self.printer, endstops, self)
+         return hmove.homing_move(pos, speed, probe_pos=probe_pos, triggered=triggered, check_triggered=check_trigger)
+
++    @property
++    def pressure_advance(self):
++        if hasattr(self, 'pa_model'):
++            return getattr(self.pa_model, 'pressure_advance', getattr(self.pa_model, 'linear_advance', 0.))
++        return getattr(self, '_mmu_pressure_advance', 0.)
++
++    @pressure_advance.setter
++    def pressure_advance(self, value):
++        if hasattr(self, 'pa_model'):
++            if hasattr(self.pa_model, 'pressure_advance'):
++                self.pa_model.pressure_advance = value
++            elif hasattr(self.pa_model, 'linear_advance'):
++                self.pa_model.linear_advance = value
++        else:
++            self._mmu_pressure_advance = value
++
++    @property
++    def pressure_advance_smooth_time(self):
++        if hasattr(self, 'smoother'):
++            return self.smoother.smooth_time
++        return getattr(self, '_mmu_pressure_advance_smooth_time', 0.)
++
++    @pressure_advance_smooth_time.setter
++    def pressure_advance_smooth_time(self, value):
++        if hasattr(self, 'smoother'):
++            self.smoother.smooth_time = value
++        else:
++            self._mmu_pressure_advance_smooth_time = value
++
++    def _set_pressure_advance(self, *args):
++        if len(args) == 2 and hasattr(self, 'pa_model') and hasattr(self, 'smoother'):
++            pressure_advance, smooth_time = args
++            old_smooth_time = self.smoother.smooth_time if self.pa_model.enabled() else 0.0
++            self.pressure_advance = pressure_advance
++            self.pressure_advance_smooth_time = smooth_time
++            new_smooth_time = self.smoother.smooth_time if self.pa_model.enabled() else 0.0
++            self._update_pressure_advance(
++                self.pa_model,
++                self.pressure_advance_time_offset,
++                old_smooth_time != new_smooth_time,
++            )
++        else:
++            super()._set_pressure_advance(*args)
++
++    def cmd_default_SET_PRESSURE_ADVANCE(self, gcmd):
++        extruder = self.printer.lookup_object('toolhead').get_extruder()
++        if hasattr(extruder, 'extruder_stepper') and extruder.extruder_stepper is not None:
++            extruder.extruder_stepper.cmd_SET_PRESSURE_ADVANCE(gcmd)
++            return
++        super().cmd_default_SET_PRESSURE_ADVANCE(gcmd)
++
+     #
+     # END temporary Kalico compatibility
+     # =======================================================================
+@@ -816,8 +877,11 @@ class MMUStepper(ExtruderStepper):
+
+         printer_extruder = self.printer.lookup_object(self.name, None)
+         if isinstance(printer_extruder, PrinterExtruder):
+-            self.stepper.set_position([printer_extruder.last_position, 0., 0.])
++            last_pos = printer_extruder.last_position
++            self.stepper.set_position(list(last_pos) if isinstance(last_pos, (list, tuple)) else [last_pos, 0., 0.])
+             self.stepper.set_trapq(printer_extruder.trapq)
++            if hasattr(printer_extruder, 'extruder_steppers') and self not in printer_extruder.extruder_steppers:
++                printer_extruder.extruder_steppers.append(self)
+         else:
+             self.stepper.set_position([pos, 0., 0.])
+
+@@ -837,10 +901,14 @@ class MMUStepper(ExtruderStepper):
+
+         # Restore extruder kinematics allocated by stock ExtruderStepper
+         self.stepper.set_stepper_kinematics(self.sk_extruder)
+-        self.stepper.set_position([extruder.last_position, 0., 0.])
++        last_pos = extruder.last_position
++        if isinstance(last_pos, (list, tuple)):
++            self.stepper.set_position(list(last_pos))
++            self.commanded_pos = sum(last_pos)
++        else:
++            self.stepper.set_position([last_pos, 0., 0.])
++            self.commanded_pos = last_pos
+         self.stepper.set_trapq(extruder.get_trapq())
+-
+-        self.commanded_pos = extruder.last_position
+         self.motion_mode = self.MODE_EXTRUDER
+         self.motion_queue = extruder.get_name()
+         self.manual_motion_queue = None

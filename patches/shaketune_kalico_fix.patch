@@ -1,0 +1,22 @@
+--- a/shaketune/graph_creators/computations/shaper_computation.py
++++ b/shaketune/graph_creators/computations/shaper_computation.py
+@@ -107,10 +107,16 @@ class ShaperComputation:
+             if hasattr(shaper, 'freq_bins') and shaper.freq_bins is not None:
+                 # New Klipper (Oct 2025+): shaper has its own freq_bins, resample to filtered freqs
+                 vals_resampled = np.interp(calibration_data.freqs, shaper.freq_bins, shaper.vals)
+-            else:
+-                # Older Klipper: vals is already filtered in fit_shaper to match freq_bins <= max_freq
+-                # It should directly match calibration_data.freqs which was filtered the same way
++            elif hasattr(calibration_data, 'freq_bins') and len(shaper.vals) == len(calibration_data.freq_bins):
++                # Kalico / Klipper forks: shaper.vals was computed over un-sliced calibration_data.freq_bins
++                vals_resampled = np.interp(calibration_data.freqs, calibration_data.freq_bins, shaper.vals)
++            elif len(shaper.vals) == len(calibration_data.freqs):
++                # Pre-sliced shaper.vals directly matching filtered freqs
+                 vals_resampled = shaper.vals
++            else:
++                # Resilient fallback ensuring exact dimension alignment under any arbitrary frequency grid
++                orig_bins = np.linspace(0.0, calibration_data.freqs[-1], len(shaper.vals))
++                vals_resampled = np.interp(calibration_data.freqs, orig_bins, shaper.vals)
+
+             shaper_info = {
+                 'type': shaper.name.upper(),

@@ -1,0 +1,5 @@
+# Locked performance governor for Rockchip RK3308 4 cores @ 1.1 GHz
+ENABLE="true"
+GOVERNOR="performance"
+MAX_SPEED="1100000"
+MIN_SPEED="1100000"

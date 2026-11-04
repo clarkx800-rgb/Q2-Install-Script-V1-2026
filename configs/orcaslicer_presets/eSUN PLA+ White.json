@@ -1,0 +1,54 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"additional_cooling_fan_speed": [
+		"0"
+	],
+	"compatible_printers": [
+		"MyKlipper 0.4 nozzle"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.94"
+	],
+	"filament_max_volumetric_speed": [
+		"22"
+	],
+	"filament_settings_id": [
+		"eSUN PLA+ White"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"50"
+	],
+	"hot_plate_temp_initial_layer": [
+		"50"
+	],
+	"inherits": "eSUN PLA+ @System",
+	"name": "eSUN PLA+ White",
+	"nozzle_temperature": [
+		"226"
+	],
+	"nozzle_temperature_initial_layer": [
+		"228"
+	],
+	"pressure_advance": [
+		"0.028"
+	],
+	"slow_down_layer_time": [
+		"5"
+	],
+	"textured_plate_temp": [
+		"50"
+	],
+	"textured_plate_temp_initial_layer": [
+		"53"
+	],
+	"version": "2.3.2.51"
+}

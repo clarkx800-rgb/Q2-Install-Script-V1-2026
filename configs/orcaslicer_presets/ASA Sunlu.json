@@ -1,0 +1,84 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"chamber_temperature": [
+		"65"
+	],
+	"close_fan_the_first_x_layers": [
+		"2"
+	],
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#404040"
+	],
+	"during_print_exhaust_fan_speed": [
+		"30"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_min_speed": [
+		"65"
+	],
+	"filament_density": [
+		"1.05"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.928"
+	],
+	"filament_minimal_purge_on_wipe_tower": [
+		"12"
+	],
+	"filament_retraction_length": [
+		"0.9"
+	],
+	"filament_settings_id": [
+		"ASA Sunlu"
+	],
+	"filament_shrink": [
+		"99.6786%"
+	],
+	"filament_type": [
+		"ASA"
+	],
+	"filament_vendor": [
+		"Sunlu"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"96"
+	],
+	"hot_plate_temp_initial_layer": [
+		"96"
+	],
+	"inherits": "PolyLite ABS @System",
+	"name": "ASA Sunlu",
+	"nozzle_temperature": [
+		"250"
+	],
+	"nozzle_temperature_initial_layer": [
+		"250"
+	],
+	"overhang_fan_speed": [
+		"90"
+	],
+	"overhang_fan_threshold": [
+		"10%"
+	],
+	"pressure_advance": [
+		"0.024"
+	],
+	"slow_down_layer_time": [
+		"4"
+	],
+	"temperature_vitrification": [
+		"94"
+	],
+	"version": "2.3.0.4"
+}

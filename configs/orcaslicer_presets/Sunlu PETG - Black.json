@@ -1,0 +1,105 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"adaptive_pressure_advance_model": [
+		"0.055,3.13,1000\n0.044,6.58,1000\n0.03,12.7,2000\n0.0375,7.94,5000\n0.035,15.9,5000\n0.025,19,8000\n0.025,15.9,8000"
+	],
+	"default_filament_colour": [
+		"#000000"
+	],
+	"during_print_exhaust_fan_speed": [
+		"50"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_cooling_layer_time": [
+		"12"
+	],
+	"fan_max_speed": [
+		"65"
+	],
+	"fan_min_speed": [
+		"30"
+	],
+	"filament_deretraction_speed": [
+		"40"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.78"
+	],
+	"filament_max_volumetric_speed": [
+		"22"
+	],
+	"filament_retract_before_wipe": [
+		"100%"
+	],
+	"filament_retract_lift_enforce": [
+		"All Surfaces"
+	],
+	"filament_retract_when_changing_layer": [
+		"0"
+	],
+	"filament_retraction_length": [
+		"0.4"
+	],
+	"filament_retraction_minimum_travel": [
+		"1"
+	],
+	"filament_retraction_speed": [
+		"40"
+	],
+	"filament_settings_id": [
+		"Sunlu PETG - Black"
+	],
+	"filament_start_gcode": [
+		"; Filament gcode\n\n"
+	],
+	"filament_vendor": [
+		"Sunlu"
+	],
+	"filament_wipe": [
+		"0"
+	],
+	"filament_wipe_distance": [
+		"2"
+	],
+	"filament_z_hop": [
+		"0.2"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"65"
+	],
+	"hot_plate_temp_initial_layer": [
+		"65"
+	],
+	"inherits": "PolyLite PETG @System",
+	"name": "Sunlu PETG - Black",
+	"nozzle_temperature": [
+		"245"
+	],
+	"nozzle_temperature_initial_layer": [
+		"247"
+	],
+	"nozzle_temperature_range_high": [
+		"260"
+	],
+	"nozzle_temperature_range_low": [
+		"245"
+	],
+	"overhang_fan_speed": [
+		"80"
+	],
+	"pressure_advance": [
+		"0.027"
+	],
+	"slow_down_layer_time": [
+		"8"
+	],
+	"version": "2.3.2.60"
+}

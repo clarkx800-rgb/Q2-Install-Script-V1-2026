@@ -1,0 +1,93 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"chamber_temperature": [
+		"50"
+	],
+	"close_fan_the_first_x_layers": [
+		"2"
+	],
+	"default_filament_colour": [
+		"#909090"
+	],
+	"during_print_exhaust_fan_speed": [
+		"65"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_cooling_layer_time": [
+		"10"
+	],
+	"fan_min_speed": [
+		"70"
+	],
+	"filament_density": [
+		"1.26"
+	],
+	"filament_deretraction_speed": [
+		"30"
+	],
+	"filament_end_gcode": [
+		"; filament end gcode \nSET_GCODE_OFFSET Z=0"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.975"
+	],
+	"filament_max_volumetric_speed": [
+		"28"
+	],
+	"filament_minimal_purge_on_wipe_tower": [
+		"12.5"
+	],
+	"filament_retraction_length": [
+		"0.4"
+	],
+	"filament_retraction_speed": [
+		"30"
+	],
+	"filament_settings_id": [
+		"ELEGOO PETG Grey"
+	],
+	"filament_vendor": [
+		"Elegoo"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"70"
+	],
+	"hot_plate_temp_initial_layer": [
+		"70"
+	],
+	"inherits": "Generic PETG @System",
+	"name": "ELEGOO PETG Grey",
+	"nozzle_temperature": [
+		"237"
+	],
+	"nozzle_temperature_initial_layer": [
+		"241"
+	],
+	"nozzle_temperature_range_high": [
+		"255"
+	],
+	"overhang_fan_speed": [
+		"80"
+	],
+	"overhang_fan_threshold": [
+		"10%"
+	],
+	"pressure_advance": [
+		"0.052"
+	],
+	"support_material_interface_fan_speed": [
+		"100"
+	],
+	"textured_plate_temp_initial_layer": [
+		"77"
+	],
+	"version": "1.8.0.0"
+}

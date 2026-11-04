@@ -1,0 +1,96 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"close_fan_the_first_x_layers": [
+		"1"
+	],
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"complete_print_exhaust_fan_speed": [
+		"60"
+	],
+	"default_filament_colour": [
+		"#000000"
+	],
+	"dont_slow_down_outer_wall": [
+		"1"
+	],
+	"during_print_exhaust_fan_speed": [
+		"100"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_cooling_layer_time": [
+		"30"
+	],
+	"fan_max_speed": [
+		"90"
+	],
+	"fan_min_speed": [
+		"45"
+	],
+	"filament_density": [
+		"1.23"
+	],
+	"filament_deretraction_speed": [
+		"35"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.91"
+	],
+	"filament_retract_lift_below": [
+		"259"
+	],
+	"filament_retract_lift_enforce": [
+		"All Surfaces"
+	],
+	"filament_retract_when_changing_layer": [
+		"1"
+	],
+	"filament_retraction_length": [
+		"0.4"
+	],
+	"filament_retraction_speed": [
+		"35"
+	],
+	"filament_settings_id": [
+		"eSUN PETG Black"
+	],
+	"filament_z_hop": [
+		"0.2"
+	],
+	"filament_z_hop_types": [
+		"Auto Lift"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"60"
+	],
+	"hot_plate_temp_initial_layer": [
+		"60"
+	],
+	"inherits": "eSUN PETG @System",
+	"name": "eSUN PETG Black",
+	"nozzle_temperature": [
+		"257"
+	],
+	"nozzle_temperature_initial_layer": [
+		"250"
+	],
+	"pressure_advance": [
+		"0.054"
+	],
+	"slow_down_layer_time": [
+		"6"
+	],
+	"slow_down_min_speed": [
+		"15"
+	],
+	"version": "2.3.1.10"
+}

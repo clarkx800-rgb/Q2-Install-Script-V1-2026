@@ -1,0 +1,36 @@
+{
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#101010"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_max_volumetric_speed": [
+		"14"
+	],
+	"filament_settings_id": [
+		"Generic PETG @System - Copy"
+	],
+	"filament_vendor": [
+		"Creality"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"68"
+	],
+	"hot_plate_temp_initial_layer": [
+		"68"
+	],
+	"inherits": "Generic PETG @System",
+	"name": "Generic PETG @System - Copy",
+	"nozzle_temperature": [
+		"245"
+	],
+	"nozzle_temperature_initial_layer": [
+		"245"
+	],
+	"version": "2.3.1.10"
+}

@@ -1,0 +1,63 @@
+{
+	"chamber_temperature": [
+		"60"
+	],
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#000000"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_cooling_layer_time": [
+		"30"
+	],
+	"fan_max_speed": [
+		"60"
+	],
+	"filament_density": [
+		"1.04"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.952"
+	],
+	"filament_minimal_purge_on_wipe_tower": [
+		"12"
+	],
+	"filament_settings_id": [
+		"CR - ABS Black"
+	],
+	"filament_vendor": [
+		"Creality"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"105"
+	],
+	"hot_plate_temp_initial_layer": [
+		"103"
+	],
+	"inherits": "Bambu ABS-GF @System",
+	"name": "CR - ABS Black",
+	"nozzle_temperature": [
+		"252"
+	],
+	"nozzle_temperature_initial_layer": [
+		"252"
+	],
+	"overhang_fan_speed": [
+		"85"
+	],
+	"overhang_fan_threshold": [
+		"25%"
+	],
+	"pressure_advance": [
+		"0.024"
+	],
+	"version": "2.3.0.4"
+}

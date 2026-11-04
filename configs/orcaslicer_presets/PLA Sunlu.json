@@ -1,0 +1,45 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"additional_cooling_fan_speed": [
+		"0"
+	],
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#FFFFFF"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"filament_end_gcode": [
+		"; filament end gcode\nSET_GCODE_OFFSET Z=0"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.97755"
+	],
+	"filament_settings_id": [
+		"PLA Sunlu"
+	],
+	"filament_start_gcode": [
+		"; Filament gcode\nSET_GCODE_OFFSET Z=0.045"
+	],
+	"filament_vendor": [
+		"Sunlu"
+	],
+	"from": "Bundle",
+	"inherits": "Bambu PLA Tough @System",
+	"name": "PLA Sunlu",
+	"nozzle_temperature_range_high": [
+		"230"
+	],
+	"pressure_advance": [
+		"0.03"
+	],
+	"version": "2.3.2.50"
+}

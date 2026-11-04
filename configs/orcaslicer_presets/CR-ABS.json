@@ -1,0 +1,52 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"compatible_printers": [
+		"K1 Max Daily",
+		"Klipper K1Max"
+	],
+	"complete_print_exhaust_fan_speed": [
+		"80"
+	],
+	"during_print_exhaust_fan_speed": [
+		"67"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"filament_change_length": [
+		"5"
+	],
+	"filament_density": [
+		"1.04"
+	],
+	"filament_end_gcode": [
+		"; filament end gcode\nSET_GCODE_OFFSET Z=0"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.935"
+	],
+	"filament_settings_id": [
+		"CR-ABS"
+	],
+	"filament_start_gcode": [
+		"; Filament gcode\nSET_GCODE_OFFSET Z=0.1"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"105"
+	],
+	"inherits": "PolyLite ABS @System",
+	"name": "CR-ABS",
+	"nozzle_temperature": [
+		"245"
+	],
+	"nozzle_temperature_initial_layer": [
+		"245"
+	],
+	"version": "2.3.0.4"
+}

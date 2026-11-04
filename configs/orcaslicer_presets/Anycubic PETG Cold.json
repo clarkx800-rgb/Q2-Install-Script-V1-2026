@@ -1,0 +1,105 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"chamber_temperature": [
+		"35"
+	],
+	"close_fan_the_first_x_layers": [
+		"2"
+	],
+	"default_filament_colour": [
+		"#909090"
+	],
+	"during_print_exhaust_fan_speed": [
+		"80"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_cooling_layer_time": [
+		"10"
+	],
+	"fan_max_speed": [
+		"80"
+	],
+	"fan_min_speed": [
+		"45"
+	],
+	"filament_density": [
+		"1.23"
+	],
+	"filament_deretraction_speed": [
+		"25"
+	],
+	"filament_end_gcode": [
+		"; filament end gcode \nSET_GCODE_OFFSET Z=0\nSET_FAN_SPEED FAN=Chamber_Fan SPEED=0"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.96768"
+	],
+	"filament_max_volumetric_speed": [
+		"14"
+	],
+	"filament_minimal_purge_on_wipe_tower": [
+		"12.5"
+	],
+	"filament_retraction_length": [
+		"0.6"
+	],
+	"filament_retraction_speed": [
+		"25"
+	],
+	"filament_settings_id": [
+		"Anycubic PETG Cold"
+	],
+	"filament_start_gcode": [
+		"; filament start gcode\nSET_GCODE_OFFSET Z=0.095\nSET_FAN_SPEED FAN=Chamber_Fan SPEED=0.95"
+	],
+	"filament_vendor": [
+		"Anycubic"
+	],
+	"filament_z_hop": [
+		"0"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"65"
+	],
+	"hot_plate_temp_initial_layer": [
+		"62"
+	],
+	"inherits": "Generic PETG @System",
+	"name": "Anycubic PETG Cold",
+	"nozzle_temperature": [
+		"230"
+	],
+	"nozzle_temperature_initial_layer": [
+		"234"
+	],
+	"nozzle_temperature_range_high": [
+		"250"
+	],
+	"overhang_fan_speed": [
+		"80"
+	],
+	"overhang_fan_threshold": [
+		"10%"
+	],
+	"pressure_advance": [
+		"0.046"
+	],
+	"support_material_interface_fan_speed": [
+		"100"
+	],
+	"temperature_vitrification": [
+		"74"
+	],
+	"textured_plate_temp_initial_layer": [
+		"77"
+	],
+	"version": "1.8.0.0"
+}

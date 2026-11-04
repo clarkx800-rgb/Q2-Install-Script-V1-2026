@@ -1,0 +1,54 @@
+{
+	"additional_cooling_fan_speed": [
+		"60"
+	],
+	"complete_print_exhaust_fan_speed": [
+		"100"
+	],
+	"default_filament_colour": [
+		"#FFDDCC"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.94"
+	],
+	"filament_max_volumetric_speed": [
+		"23"
+	],
+	"filament_settings_id": [
+		"Creality - Hyper PLA"
+	],
+	"filament_start_gcode": [
+		"; Filament start gcode\nSAVE_VARIABLE VARIABLE=current_swap_temp VALUE=[nozzle_temperature_range_high]"
+	],
+	"filament_vendor": [
+		"Creality"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"50"
+	],
+	"hot_plate_temp_initial_layer": [
+		"50"
+	],
+	"inherits": "QIDI PLA Rapido @Qidi Q2 0.4 nozzle",
+	"name": "Creality - Hyper PLA",
+	"nozzle_temperature": [
+		"205"
+	],
+	"nozzle_temperature_initial_layer": [
+		"214"
+	],
+	"nozzle_temperature_range_high": [
+		"230"
+	],
+	"overhang_fan_threshold": [
+		"25%"
+	],
+	"pressure_advance": [
+		"0.036"
+	],
+	"version": "2.3.2.51"
+}

@@ -1,0 +1,27 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"compatible_printers": [
+		"MyKlipper 0.4 nozzle"
+	],
+	"filament_adaptive_volumetric_speed": [
+		"1"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_max_volumetric_speed": [
+		"21"
+	],
+	"filament_retraction_length": [
+		"0.4"
+	],
+	"filament_settings_id": [
+		"eSUN PLA+ @System - Copy"
+	],
+	"from": "Bundle",
+	"inherits": "eSUN PLA+ @System",
+	"name": "eSUN PLA+ @System - Copy",
+	"version": "2.3.2.51"
+}

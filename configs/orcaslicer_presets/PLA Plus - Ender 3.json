@@ -1,0 +1,75 @@
+{
+	"additional_cooling_fan_speed": [
+		"80"
+	],
+	"complete_print_exhaust_fan_speed": [
+		"0"
+	],
+	"default_filament_colour": [
+		"#00FF00"
+	],
+	"dont_slow_down_outer_wall": [
+		"1"
+	],
+	"during_print_exhaust_fan_speed": [
+		"0"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_cooling_layer_time": [
+		"35"
+	],
+	"filament_cost": [
+		"40"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.965"
+	],
+	"filament_max_volumetric_speed": [
+		"18"
+	],
+	"filament_retraction_length": [
+		"0.8"
+	],
+	"filament_settings_id": [
+		"PLA Plus - Ender 3"
+	],
+	"filament_shrink": [
+		"99.57%"
+	],
+	"filament_vendor": [
+		"Basic"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"47"
+	],
+	"hot_plate_temp_initial_layer": [
+		"51"
+	],
+	"inherits": "Generic PLA @System",
+	"name": "PLA Plus - Ender 3",
+	"nozzle_temperature": [
+		"215"
+	],
+	"nozzle_temperature_initial_layer": [
+		"218"
+	],
+	"nozzle_temperature_range_high": [
+		"220"
+	],
+	"overhang_fan_threshold": [
+		"10%"
+	],
+	"pressure_advance": [
+		"0.04"
+	],
+	"slow_down_min_speed": [
+		"15"
+	],
+	"version": "1.9.0.2"
+}

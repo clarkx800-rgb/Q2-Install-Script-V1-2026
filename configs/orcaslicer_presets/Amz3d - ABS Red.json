@@ -1,0 +1,48 @@
+{
+	"default_filament_colour": [
+		"#FF0000"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_max_speed": [
+		"70"
+	],
+	"fan_min_speed": [
+		"18"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.935"
+	],
+	"filament_max_volumetric_speed": [
+		"14"
+	],
+	"filament_retraction_length": [
+		"1"
+	],
+	"filament_settings_id": [
+		"Amz3d - ABS Red"
+	],
+	"filament_vendor": [
+		"Amz3d"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"103"
+	],
+	"inherits": "Generic ABS @System",
+	"name": "Amz3d - ABS Red",
+	"nozzle_temperature_range_low": [
+		"230"
+	],
+	"pressure_advance": [
+		"0.022"
+	],
+	"textured_plate_temp_initial_layer": [
+		"100"
+	],
+	"version": "2.3.0.3"
+}

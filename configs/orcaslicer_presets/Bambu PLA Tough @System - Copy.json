@@ -1,0 +1,24 @@
+{
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#FFFFFF"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_settings_id": [
+		"Bambu PLA Tough @System - Copy"
+	],
+	"filament_vendor": [
+		"Sunlu"
+	],
+	"from": "Bundle",
+	"inherits": "Bambu PLA Tough @System",
+	"name": "Bambu PLA Tough @System - Copy",
+	"nozzle_temperature_range_high": [
+		"230"
+	],
+	"version": "2.3.2.50"
+}

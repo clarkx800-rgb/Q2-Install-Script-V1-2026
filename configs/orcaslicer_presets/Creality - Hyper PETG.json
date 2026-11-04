@@ -1,0 +1,100 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"adaptive_pressure_advance_bridges": [
+		"0.048"
+	],
+	"adaptive_pressure_advance_model": [
+		"0.055 , 7.73 , 1500\n0.053 , 19.3 , 1500\n0.05 , 23.2 , 1500\n0.058 , 7.73 , 2000\n0.045 , 19.3 , 2000\n0.05 , 23.2 , 2000\n0.048 , 7.73 , 4000\n0.038 , 19.3 , 4000\n0.044 , 23.2 , 4000"
+	],
+	"chamber_temperature": [
+		"50"
+	],
+	"close_fan_the_first_x_layers": [
+		"2"
+	],
+	"compatible_printers": [
+		"K1 Max Daily",
+		"Klipper K1Max"
+	],
+	"default_filament_colour": [
+		"#909090"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_cooling_layer_time": [
+		"10"
+	],
+	"fan_max_speed": [
+		"80"
+	],
+	"filament_change_length": [
+		"5"
+	],
+	"filament_end_gcode": [
+		"; filament end gcode \nSET_GCODE_OFFSET Z=0"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.995"
+	],
+	"filament_max_volumetric_speed": [
+		"18"
+	],
+	"filament_retraction_length": [
+		"0.6"
+	],
+	"filament_settings_id": [
+		"Creality - Hyper PETG"
+	],
+	"filament_start_gcode": [
+		"; filament start gcode\nSET_GCODE_OFFSET Z=0.1"
+	],
+	"filament_vendor": [
+		"Creality"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"60"
+	],
+	"hot_plate_temp_initial_layer": [
+		"65"
+	],
+	"inherits": "Generic PETG @System",
+	"name": "Creality - Hyper PETG",
+	"nozzle_temperature": [
+		"220"
+	],
+	"nozzle_temperature_initial_layer": [
+		"240"
+	],
+	"nozzle_temperature_range_low": [
+		"190"
+	],
+	"overhang_fan_speed": [
+		"80"
+	],
+	"overhang_fan_threshold": [
+		"10%"
+	],
+	"slow_down_layer_time": [
+		"3"
+	],
+	"slow_down_min_speed": [
+		"15"
+	],
+	"temperature_vitrification": [
+		"83"
+	],
+	"textured_plate_temp": [
+		"75"
+	],
+	"textured_plate_temp_initial_layer": [
+		"75"
+	],
+	"version": "2.3.1.10"
+}

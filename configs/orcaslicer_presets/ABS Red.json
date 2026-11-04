@@ -1,0 +1,69 @@
+{
+	"activate_air_filtration": [
+		"1"
+	],
+	"chamber_temperature": [
+		"60"
+	],
+	"compatible_printers": [
+		"Qidi Q2 0.4 nozzle"
+	],
+	"default_filament_colour": [
+		"#FF0000"
+	],
+	"during_print_exhaust_fan_speed": [
+		"40"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"fan_min_speed": [
+		"40"
+	],
+	"filament_density": [
+		"1.05"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.952"
+	],
+	"filament_max_volumetric_speed": [
+		"14"
+	],
+	"filament_minimal_purge_on_wipe_tower": [
+		"12"
+	],
+	"filament_settings_id": [
+		"ABS Red"
+	],
+	"filament_vendor": [
+		"Amz3d"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"105"
+	],
+	"inherits": "PolyLite ABS @System",
+	"name": "ABS Red",
+	"nozzle_temperature": [
+		"253"
+	],
+	"nozzle_temperature_initial_layer": [
+		"253"
+	],
+	"overhang_fan_speed": [
+		"100"
+	],
+	"overhang_fan_threshold": [
+		"10%"
+	],
+	"pressure_advance": [
+		"0.028"
+	],
+	"slow_down_layer_time": [
+		"4"
+	],
+	"version": "2.3.0.4"
+}

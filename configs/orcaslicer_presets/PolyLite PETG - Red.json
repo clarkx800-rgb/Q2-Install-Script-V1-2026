@@ -1,0 +1,48 @@
+{
+	"default_filament_colour": [
+		"#FF0000"
+	],
+	"enable_pressure_advance": [
+		"1"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"0.955"
+	],
+	"filament_max_volumetric_speed": [
+		"18"
+	],
+	"filament_settings_id": [
+		"PolyLite PETG - Red"
+	],
+	"filament_start_gcode": [
+		"; Filament gcode\nSAVE_VARIABLE VARIABLE=current_swap_temp VALUE=[nozzle_temperature_range_high]"
+	],
+	"from": "Bundle",
+	"hot_plate_temp": [
+		"65"
+	],
+	"hot_plate_temp_initial_layer": [
+		"65"
+	],
+	"inherits": "PolyLite PETG @System",
+	"name": "PolyLite PETG - Red",
+	"nozzle_temperature": [
+		"242"
+	],
+	"nozzle_temperature_initial_layer": [
+		"247"
+	],
+	"nozzle_temperature_range_high": [
+		"253"
+	],
+	"nozzle_temperature_range_low": [
+		"240"
+	],
+	"pressure_advance": [
+		"0.032"
+	],
+	"version": "2.3.2.60"
+}
