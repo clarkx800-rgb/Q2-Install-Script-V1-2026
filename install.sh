@@ -35,6 +35,25 @@ fi
 
 chmod +x "$SCRIPTS_DIR"/*.sh "$SUITE_ROOT/restore.sh" 2>/dev/null || true
 
+clear 2>/dev/null || true
+echo -e "${RED}${BOLD}========================================================================${NC}"
+echo -e "${YELLOW}${BOLD}   ⚠️  CRITICAL WARNING & LIABILITY DISCLAIMER — READ CAREFULLY  ⚠️${NC}"
+echo -e "${RED}${BOLD}========================================================================${NC}"
+echo -e "  1. ${BOLD}UNTESTED INSTALL SCRIPT:${NC} This installer script wrapper was packaged"
+echo -e "     from a pre-migration backup and ${RED}${BOLD}HAS NEVER BEEN TESTED${NC} on a live machine."
+echo -e "  2. ${BOLD}ZERO LIABILITY:${NC} The author (${BOLD}clarkx800-rgb / Pucci${NC}) is ${RED}${BOLD}NOT responsible${NC}"
+echo -e "     for any damages, bricked boards, fires, injuries, or anything else."
+echo -e "  3. ${BOLD}NO SUPPORT:${NC} Provided strictly 'AS-IS' with ${RED}${BOLD}NO support${NC} whatsoever."
+echo -e "  4. ${BOLD}CREDITS:${NC} Built on upstream work by n3oney, Kalico, Klipper, Arksine"
+echo -e "     (Katapult/Moonraker), moggieuk (Happy Hare), & prestonbrown (HelixScreen)."
+echo -e "${RED}${BOLD}========================================================================${NC}"
+echo ""
+read -rp "👉 Do you understand and accept 100% of the risk? Type 'yes' to continue: " accept_risk
+if [[ "${accept_risk,,}" != "yes" && "${accept_risk,,}" != "y" ]]; then
+    echo "Exiting without making any changes."
+    exit 0
+fi
+
 pause_return() {
     echo ""
     read -rp "👉 Press ENTER to return to the Main Control Center..." _
