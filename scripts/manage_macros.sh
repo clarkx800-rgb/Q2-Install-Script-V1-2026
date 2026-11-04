@@ -214,12 +214,11 @@ restore_macros_menu() {
     local target_cfg
     target_cfg=$(get_target_config_dir)
 
-    echo ""
-    echo -e "${CYAN}${BOLD}======================================================================${NC}"
-    echo -e "${BOLD} ⏪ RESTORE PREVIOUS MACROS (IF YOU DON'T LIKE PUCCI'S MACROS)${NC}"
-    echo -e "${CYAN}======================================================================${NC}"
-
     if [[ ! -d "$BACKUP_ROOT_DIR" ]] || [[ -z "$(ls -A "$BACKUP_ROOT_DIR" 2>/dev/null)" ]]; then
+        echo ""
+        echo -e "${CYAN}${BOLD}======================================================================${NC}"
+        echo -e "${BOLD} ⏪ RESTORE PREVIOUS MACROS (IF YOU DON'T LIKE PUCCI'S MACROS)${NC}"
+        echo -e "${CYAN}======================================================================${NC}"
         echo -e "${YELLOW}[!] No named backups found in ${BACKUP_ROOT_DIR} yet.${NC}"
         echo "    Switching printer.cfg to basic stock macro mode (gcode_macro_basic.cfg)..."
         keep_user_macros "false"

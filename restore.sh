@@ -25,12 +25,11 @@ if [[ "${SIM_MODE:-0}" != "1" && $EUID -ne 0 ]]; then
     exit 1
 fi
 
-echo ""
-echo -e "${CYAN}${BOLD}======================================================================${NC}"
-echo -e "${BOLD} 🔄 QIDI Q2 AP BOARD — UNIVERSAL NAMED-BACKUP RESTORE CENTER${NC}"
-echo -e "${CYAN}======================================================================${NC}"
-
 if [[ ! -d "$BACKUP_ROOT_DIR" ]] || [[ -z "$(ls -A "$BACKUP_ROOT_DIR" 2>/dev/null)" ]]; then
+    echo ""
+    echo -e "${CYAN}${BOLD}======================================================================${NC}"
+    echo -e "${BOLD} 🔄 QIDI Q2 AP BOARD — UNIVERSAL NAMED-BACKUP RESTORE CENTER${NC}"
+    echo -e "${CYAN}======================================================================${NC}"
     echo -e "${YELLOW}[!] No named backups found in ${BACKUP_ROOT_DIR} yet.${NC}"
     echo "    Backups are created automatically whenever you run an option in install.sh."
     exit 0
