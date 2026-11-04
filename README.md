@@ -1,4 +1,4 @@
-# 🚀 Qidi Q2 AP Board — "Mint System" Community Installer & Rescue Suite
+# 🚀 Qidi Q2 AP Board — "Mint System" Community Installer & Rescue Suite (Requirements: Bravery)
 
 [![Kalico](https://img.shields.io/badge/Firmware-Kalico%20(Danger--Klipper)-red.svg)](https://github.com/KalicoCrew/kalico)
 [![Base Config](https://img.shields.io/badge/Base%20Foundation-n3oney%2Fqidi--q2--klipper-purple.svg)](https://github.com/n3oney/qidi-q2-klipper)
