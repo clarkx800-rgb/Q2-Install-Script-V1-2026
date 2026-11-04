@@ -118,6 +118,10 @@ if [[ "$CATEGORY" == "kernel" || "$CATEGORY" == "full_system" ]]; then
         elif command -v lsblk >/dev/null 2>&1; then
             FOUND=$(lsblk -ln -o PATH,PARTLABEL 2>/dev/null | grep -wi "boot" | awk '{print $1}' | head -n 1 || true)
             [[ -n "$FOUND" && -e "$FOUND" ]] && BOOT_PART="$FOUND"
+            if [[ -z "$BOOT_PART" ]]; then
+                FOUND=$(lsblk -ln -o PATH,MOUNTPOINT 2>/dev/null | awk '$2 == "/boot" {print $1}' | head -n 1 || true)
+                [[ -n "$FOUND" && -e "$FOUND" ]] && BOOT_PART="$FOUND"
+            fi
         fi
     fi
 
@@ -149,6 +153,7 @@ set -euo pipefail
 BACKUP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODE="${1:---full}"
 REAL_USER="${SUDO_USER:-$USER}"
+ETC_DIR="${SIM_ETC:-/etc}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -186,28 +191,28 @@ restore_configs_and_macros() {
 restore_network() {
     echo -e "${CYAN}[+] Reverting Network Adapter settings to snapshot state...${NC}"
     if [[ -f "$BACKUP_ROOT/system/99-klipper-tuning.conf" ]]; then
-        cp -p "$BACKUP_ROOT/system/99-klipper-tuning.conf" /etc/sysctl.d/99-klipper-tuning.conf
+        cp -p "$BACKUP_ROOT/system/99-klipper-tuning.conf" "$ETC_DIR/sysctl.d/99-klipper-tuning.conf"
     else
-        rm -f /etc/sysctl.d/99-klipper-tuning.conf
+        rm -f "$ETC_DIR/sysctl.d/99-klipper-tuning.conf"
     fi
 
     if [[ -f "$BACKUP_ROOT/system/70-wifi-powersave.rules" ]]; then
-        cp -p "$BACKUP_ROOT/system/70-wifi-powersave.rules" /etc/udev/rules.d/70-wifi-powersave.rules
+        cp -p "$BACKUP_ROOT/system/70-wifi-powersave.rules" "$ETC_DIR/udev/rules.d/70-wifi-powersave.rules"
     else
-        rm -f /etc/udev/rules.d/70-wifi-powersave.rules
+        rm -f "$ETC_DIR/udev/rules.d/70-wifi-powersave.rules"
     fi
 
     if [[ -f "$BACKUP_ROOT/system/8821cs.conf" ]]; then
-        cp -p "$BACKUP_ROOT/system/8821cs.conf" /etc/modprobe.d/8821cs.conf
+        cp -p "$BACKUP_ROOT/system/8821cs.conf" "$ETC_DIR/modprobe.d/8821cs.conf"
     else
-        rm -f /etc/modprobe.d/8821cs.conf
+        rm -f "$ETC_DIR/modprobe.d/8821cs.conf"
     fi
 
     if [[ -d "$BACKUP_ROOT/system/makerbase-wlan0.service.d" ]]; then
-        mkdir -p /etc/systemd/system/makerbase-wlan0.service.d
-        cp -rp "$BACKUP_ROOT/system/makerbase-wlan0.service.d"/. /etc/systemd/system/makerbase-wlan0.service.d/
+        mkdir -p "$ETC_DIR/systemd/system/makerbase-wlan0.service.d"
+        cp -rp "$BACKUP_ROOT/system/makerbase-wlan0.service.d"/. "$ETC_DIR/systemd/system/makerbase-wlan0.service.d/"
     else
-        rm -rf /etc/systemd/system/makerbase-wlan0.service.d 2>/dev/null || true
+        rm -rf "$ETC_DIR/systemd/system/makerbase-wlan0.service.d" 2>/dev/null || true
     fi
 
     sysctl --system >/dev/null 2>&1 || true
@@ -218,11 +223,11 @@ restore_network() {
 
 restore_ap_board() {
     echo -e "${CYAN}[+] Reverting AP Board CPU, disk & service settings...${NC}"
-    [[ -f "$BACKUP_ROOT/system/fstab" ]] && cp -p "$BACKUP_ROOT/system/fstab" /etc/fstab || true
+    [[ -f "$BACKUP_ROOT/system/fstab" ]] && cp -p "$BACKUP_ROOT/system/fstab" "$ETC_DIR/fstab" || true
     if [[ -f "$BACKUP_ROOT/system/cpufrequtils" ]]; then
-        cp -p "$BACKUP_ROOT/system/cpufrequtils" /etc/default/cpufrequtils
+        cp -p "$BACKUP_ROOT/system/cpufrequtils" "$ETC_DIR/default/cpufrequtils"
     else
-        rm -f /etc/default/cpufrequtils
+        rm -f "$ETC_DIR/default/cpufrequtils"
     fi
 
     if [[ -f "$BACKUP_ROOT/system/enabled_services.txt" ]]; then

@@ -40,6 +40,10 @@ if [[ -z "$BOOT_PART" ]]; then
     elif command -v lsblk >/dev/null 2>&1; then
         FOUND=$(lsblk -ln -o PATH,PARTLABEL 2>/dev/null | grep -wi "boot" | awk '{print $1}' | head -n 1 || true)
         [[ -n "$FOUND" && -e "$FOUND" ]] && BOOT_PART="$FOUND"
+        if [[ -z "$BOOT_PART" ]]; then
+            FOUND=$(lsblk -ln -o PATH,MOUNTPOINT 2>/dev/null | awk '$2 == "/boot" {print $1}' | head -n 1 || true)
+            [[ -n "$FOUND" && -e "$FOUND" ]] && BOOT_PART="$FOUND"
+        fi
     fi
 fi
 

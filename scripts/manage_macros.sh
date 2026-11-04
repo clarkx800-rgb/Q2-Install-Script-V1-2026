@@ -173,10 +173,12 @@ PYEOF
     chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
     systemctl restart klipper 2>/dev/null || true
 
-    echo ""
-    echo -e "${GREEN}${BOLD}[✓] NO Selected: Your Own Macros Are Preserved & Active!${NC}"
-    echo -e "    • Pucci's macro suite is disabled in printer.cfg."
-    echo -e "    • Your own macro files remain active."
+    if [[ "$skip_backup" != "true" ]]; then
+        echo ""
+        echo -e "${GREEN}${BOLD}[✓] NO Selected: Your Own Macros Are Preserved & Active!${NC}"
+        echo -e "    • Pucci's macro suite is disabled in printer.cfg."
+        echo -e "    • Your own macro files remain active."
+    fi
 }
 
 choose_macros_menu() {

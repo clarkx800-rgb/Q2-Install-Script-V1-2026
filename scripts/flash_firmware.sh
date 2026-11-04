@@ -29,11 +29,12 @@ NC='\033[0m'
 
 # Detect best Python interpreter (prefer klippy-env which always has pyserial)
 PYTHON_BIN="python3"
-if [[ -x "$USER_HOME/klippy-env/bin/python" ]]; then
-    PYTHON_BIN="$USER_HOME/klippy-env/bin/python"
-elif [[ -x "/home/mks/klippy-env/bin/python" ]]; then
-    PYTHON_BIN="/home/mks/klippy-env/bin/python"
-fi
+for p in "$USER_HOME/klippy-env/bin/python" "/home/mks/klippy-env/bin/python" "/home/mks/klipper-env/bin/python" "$USER_HOME/klipper-env/bin/python"; do
+    if [[ -x "$p" ]]; then
+        PYTHON_BIN="$p"
+        break
+    fi
+done
 
 ensure_pyserial() {
     if ! "$PYTHON_BIN" -c "import serial" >/dev/null 2>&1; then
@@ -120,10 +121,15 @@ select_usb_device() {
 }
 
 sync_loadcell_drivers() {
-    local klipper_dir="$USER_HOME/klipper"
-    [[ ! -d "$klipper_dir" && -d "/home/mks/klipper" ]] && klipper_dir="/home/mks/klipper"
+    local klipper_dir=""
+    for kdir in "$USER_HOME/klipper" "/home/mks/klipper" "/home/mks/qidi-q2-klipper" "$USER_HOME/qidi-q2-klipper"; do
+        if [[ -d "$kdir" ]]; then
+            klipper_dir="$kdir"
+            break
+        fi
+    done
 
-    if [[ -d "$klipper_dir" ]]; then
+    if [[ -n "$klipper_dir" && -d "$klipper_dir" ]]; then
         echo -e "${CYAN}[*] Syncing CS1237 nozzle load-cell drivers into ${klipper_dir}...${NC}"
         if [[ -f "$SUITE_ROOT/patches/cs1237_loadcell/sensor_cs1237.c" && -d "$klipper_dir/src" ]]; then
             cp -u "$SUITE_ROOT/patches/cs1237_loadcell/sensor_cs1237.c" "$klipper_dir/src/" 2>/dev/null || true
@@ -253,7 +259,18 @@ install_printer_firmware() {
             done
             [[ -z "$new_mb_dev" ]] && new_mb_dev="$mb_dev"
             if [[ -f "$target_cfg/printer.cfg" ]]; then
-                sed -i "s|serial:\s*/dev/serial/by-id/.*stm32f407.*|serial: ${new_mb_dev}|g" "$target_cfg/printer.cfg"
+                python3 - << PYEOF
+import re
+p = "$target_cfg/printer.cfg"
+with open(p, "r") as f:
+    c = f.read()
+c = re.sub(r"(\[mcu\]\s*\n\s*serial\s*:\s*).*(\n)", r"\g<1>${new_mb_dev}\2", c)
+with open(p, "w") as f:
+    f.write(c)
+PYEOF
+            fi
+            if [[ -f "$target_cfg/MCU_ID.cfg" ]]; then
+                sed -i "s|serial:.*|serial: ${new_mb_dev}|g" "$target_cfg/MCU_ID.cfg"
             fi
             echo -e "${GREEN}[✓] Motion Mainboard flashed and linked in printer.cfg!${NC}"
         fi
@@ -401,9 +418,11 @@ install_box_firmware() {
                 for d in "$serial_dir"/*stm32f401*; do
                     [[ -e "$d" ]] && mmu_dev="$d" && break
                 done
-                if [[ -f "$target_cfg/mmu/base/mmu_hardware.cfg" ]]; then
-                    sed -i "s|serial:.*|serial: ${mmu_dev}|g" "$target_cfg/mmu/base/mmu_hardware.cfg"
-                fi
+                for mmu_cfg in "$target_cfg/mmu/base/mmu.cfg" "$target_cfg/mmu/base/mmu_hardware.cfg" "$target_cfg/mmu.cfg"; do
+                    if [[ -f "$mmu_cfg" ]]; then
+                        sed -i "s|serial:.*|serial: ${mmu_dev}|g" "$mmu_cfg"
+                    fi
+                done
                 echo -e "${GREEN}[✓] Qidi Box firmware flashed and serial updated!${NC}"
             fi
             # Enable MMU in printer.cfg

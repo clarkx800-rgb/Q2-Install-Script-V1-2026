@@ -73,9 +73,10 @@ done
 echo -e "${GREEN}      [✓] Background CPU-stealing services stopped and disabled.${NC}"
 
 echo "[4/4] Verifying internal Toolhead UART port (/dev/ttyS4)..."
-if [[ -e /dev/ttyS4 ]]; then
-    chmod 666 /dev/ttyS4 2>/dev/null || true
-    echo -e "${GREEN}      [✓] /dev/ttyS4 ready at 500,000 baud.${NC}"
+ttys4_dev="${SIM_TTYS4:-/dev/ttyS4}"
+if [[ -e "$ttys4_dev" ]]; then
+    chmod 666 "$ttys4_dev" 2>/dev/null || true
+    echo -e "${GREEN}      [✓] ${ttys4_dev} ready at 500,000 baud.${NC}"
 fi
 
 echo ""
