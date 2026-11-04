@@ -144,6 +144,121 @@ sync_loadcell_drivers() {
 }
 
 # ==============================================================================
+# KATAPULT BOOTLOADER AUTO-DETECTION HELPERS
+# ==============================================================================
+is_katapult_installed_mcu() {
+    local target_cfg
+    target_cfg=$(get_target_config_dir)
+    local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
+
+    # 1. Check persistent marker files
+    if [[ -f "$target_cfg/.katapult_mcu_installed" || -f "$USER_HOME/.katapult_mcu_installed" || -f "/home/mks/.katapult_mcu_installed" ]]; then
+        return 0
+    fi
+
+    # 2. Check if USB serial device explicitly reports Katapult bootloader
+    if [[ -d "$serial_dir" ]]; then
+        for dev in "$serial_dir"/*katapult*stm32f407* "$serial_dir"/*katapult*GD32F4* "$serial_dir"/*katapult*; do
+            if [[ -e "$dev" ]]; then
+                return 0
+            fi
+        done
+    fi
+
+    # 3. Simulator test override
+    if [[ "${SIM_KATAPULT_MCU:-0}" == "1" ]]; then
+        return 0
+    fi
+
+    # 4. Live query via flashtool.py status probe
+    if [[ -d "$serial_dir" && "${SIM_MODE:-0}" != "1" && -x "$PYTHON_BIN" && -f "$FLASHTOOL" ]]; then
+        for dev in "$serial_dir"/*stm32f407*; do
+            if [[ -e "$dev" ]]; then
+                if timeout 2 "$PYTHON_BIN" "$FLASHTOOL" -d "$dev" -s >/dev/null 2>&1; then
+                    return 0
+                fi
+            fi
+        done
+    fi
+
+    return 1
+}
+
+is_katapult_installed_thr() {
+    local target_cfg
+    target_cfg=$(get_target_config_dir)
+    local ttys4_dev="${SIM_TTYS4:-/dev/ttyS4}"
+
+    # 1. Check persistent marker files
+    if [[ -f "$target_cfg/.katapult_thr_installed" || -f "$USER_HOME/.katapult_thr_installed" || -f "/home/mks/.katapult_thr_installed" ]]; then
+        return 0
+    fi
+
+    # 2. Simulator test override
+    if [[ "${SIM_KATAPULT_THR:-0}" == "1" ]]; then
+        return 0
+    fi
+
+    # 3. Live query on /dev/ttyS4 via flashtool.py status probe
+    if [[ -e "$ttys4_dev" && "${SIM_MODE:-0}" != "1" && -x "$PYTHON_BIN" && -f "$FLASHTOOL" ]]; then
+        if timeout 2 "$PYTHON_BIN" "$FLASHTOOL" -d "$ttys4_dev" -b 500000 -s >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+is_katapult_installed_mmu() {
+    local target_cfg
+    target_cfg=$(get_target_config_dir)
+    local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
+
+    # 1. Check persistent marker files
+    if [[ -f "$target_cfg/.katapult_mmu_installed" || -f "$USER_HOME/.katapult_mmu_installed" || -f "/home/mks/.katapult_mmu_installed" ]]; then
+        return 0
+    fi
+
+    # 2. Check if USB serial device explicitly reports Katapult bootloader
+    if [[ -d "$serial_dir" ]]; then
+        for dev in "$serial_dir"/*katapult*stm32f401*; do
+            if [[ -e "$dev" ]]; then
+                return 0
+            fi
+        done
+    fi
+
+    # 3. Simulator test override
+    if [[ "${SIM_KATAPULT_MMU:-0}" == "1" ]]; then
+        return 0
+    fi
+
+    # 4. Live query via flashtool.py status probe
+    if [[ -d "$serial_dir" && "${SIM_MODE:-0}" != "1" && -x "$PYTHON_BIN" && -f "$FLASHTOOL" ]]; then
+        for dev in "$serial_dir"/*stm32f401*; do
+            if [[ -e "$dev" ]]; then
+                if timeout 2 "$PYTHON_BIN" "$FLASHTOOL" -d "$dev" -s >/dev/null 2>&1; then
+                    return 0
+                fi
+            fi
+        done
+    fi
+
+    return 1
+}
+
+mark_katapult_installed() {
+    local target="$1" # mcu, thr, or mmu
+    local target_cfg
+    target_cfg=$(get_target_config_dir)
+    touch "$target_cfg/.katapult_${target}_installed" 2>/dev/null || true
+    touch "$USER_HOME/.katapult_${target}_installed" 2>/dev/null || true
+    if [[ -d "/home/mks" ]]; then
+        touch "/home/mks/.katapult_${target}_installed" 2>/dev/null || true
+    fi
+}
+
+# ==============================================================================
 # WORKFLOW 1: PRINTER FIRMWARE (MOTION MAINBOARD MCU + TOOLHEAD MCU)
 # ==============================================================================
 install_printer_firmware() {
@@ -183,28 +298,52 @@ install_printer_firmware() {
     # --------------------------------------------------------------------------
     # PART A: MOTION MAINBOARD MCU (GD32F425)
     # --------------------------------------------------------------------------
-    local mb_items=(
-        "[1] Already has Katapult installed (Flash mcu.bin directly over USB)"
-        "[2] Super-Stock Factory Qidi (Walk through 1-time Micro-SD card deployer)"
-        "[3] Skip Motion Mainboard flashing"
-        "[b] ⬅️  Back to Main Menu"
-        "[q] 🚪 Exit Installer"
-    )
-    local mb_header="${BLUE}${BOLD}--- PART 1 OF 2: MOTION MAINBOARD MCU (GD32F425) ---${NC}\n"
-    mb_header+="What is the current state of your Motion Mainboard?"
-
-    local mb_res
-    mb_res=$(arrow_menu "$mb_header" mb_items 0)
     local mb_state="2"
+    if is_katapult_installed_mcu; then
+        echo -e "${GREEN}${BOLD}[✓] Katapult bootloader detected on Motion Mainboard!${NC}"
+        echo -e "${GREEN}    Auto-skipping 1-time Micro-SD card deployer step.${NC}\n"
+        local mb_items=(
+            "[1] Flash mcu.bin directly over USB (Katapult ready)"
+            "[2] Skip Motion Mainboard flashing"
+            "[3] Force re-run 1-time Micro-SD card deployer"
+            "[b] ⬅️  Back to Main Menu"
+            "[q] 🚪 Exit Installer"
+        )
+        local mb_header="${BLUE}${BOLD}--- PART 1 OF 2: MOTION MAINBOARD MCU (GD32F425) ---${NC}\n"
+        mb_header+="${GREEN}[✓] Katapult is already installed.${NC} Select an action:"
 
-    case "$mb_res" in
-        0) mb_state="2" ;; # Katapult direct
-        1) mb_state="1" ;; # Super-Stock SD deployer
-        2) mb_state="3" ;; # Skip
-        3|b|back|menu|m) return 0 ;;
-        4|q|quit|exit) exit 0 ;;
-        *) mb_state="2" ;;
-    esac
+        local mb_res
+        mb_res=$(arrow_menu "$mb_header" mb_items 0)
+        case "$mb_res" in
+            0) mb_state="2" ;; # Katapult direct
+            1) mb_state="3" ;; # Skip
+            2) mb_state="1" ;; # Force SD deployer
+            3|b|back|menu|m) return 0 ;;
+            4|q|quit|exit) exit 0 ;;
+            *) mb_state="2" ;;
+        esac
+    else
+        local mb_items=(
+            "[1] Super-Stock Factory Qidi (Walk through 1-time Micro-SD card deployer)"
+            "[2] Already has Katapult installed (Flash mcu.bin directly over USB)"
+            "[3] Skip Motion Mainboard flashing"
+            "[b] ⬅️  Back to Main Menu"
+            "[q] 🚪 Exit Installer"
+        )
+        local mb_header="${BLUE}${BOLD}--- PART 1 OF 2: MOTION MAINBOARD MCU (GD32F425) ---${NC}\n"
+        mb_header+="What is the current state of your Motion Mainboard?"
+
+        local mb_res
+        mb_res=$(arrow_menu "$mb_header" mb_items 0)
+        case "$mb_res" in
+            0) mb_state="1" ;; # Super-Stock SD deployer
+            1) mb_state="2" ;; # Katapult direct
+            2) mb_state="3" ;; # Skip
+            3|b|back|menu|m) return 0 ;;
+            4|q|quit|exit) exit 0 ;;
+            *) mb_state="1" ;;
+        esac
+    fi
 
     if [[ "$mb_state" == "1" ]]; then
         local sd_items=(
@@ -272,6 +411,7 @@ PYEOF
             if [[ -f "$target_cfg/MCU_ID.cfg" ]]; then
                 sed -i "s|serial:.*|serial: ${new_mb_dev}|g" "$target_cfg/MCU_ID.cfg"
             fi
+            mark_katapult_installed "mcu"
             echo -e "${GREEN}[✓] Motion Mainboard flashed and linked in printer.cfg!${NC}"
         fi
     fi
@@ -279,29 +419,55 @@ PYEOF
     # --------------------------------------------------------------------------
     # PART B: TOOLHEAD MCU (GD32F303 OVER /dev/ttyS4)
     # --------------------------------------------------------------------------
-    local thr_items=(
-        "[1] Super-Stock Factory Qidi (Auto-install Katapult + Flash thr.bin)"
-        "[2] Already has Katapult installed (Flash thr.bin now)"
-        "[3] Skip Toolhead flashing"
-        "[b] ⬅️  Back to Main Menu"
-        "[q] 🚪 Exit Installer"
-    )
-    local thr_header="${BLUE}${BOLD}--- PART 2 OF 2: TOOLHEAD BOARD (THR - GD32F303) ---${NC}\n"
-    thr_header+="Good news! On the AP board, the Toolhead is wired directly to internal\n"
-    thr_header+="port ${BOLD}/dev/ttyS4${NC} at 500,000 speed. No SD card or USB cable needed!\n\n"
-    thr_header+="What is the current state of your Toolhead Board?"
-
-    local thr_res
-    thr_res=$(arrow_menu "$thr_header" thr_items 0)
     local thr_state="1"
-    case "$thr_res" in
-        0) thr_state="1" ;;
-        1) thr_state="2" ;;
-        2) thr_state="3" ;;
-        3|b|back|menu|m) return 0 ;;
-        4|q|quit|exit) exit 0 ;;
-        *) thr_state="1" ;;
-    esac
+    if is_katapult_installed_thr; then
+        echo -e "${GREEN}${BOLD}[✓] Katapult bootloader detected on Toolhead Board!${NC}"
+        echo -e "${GREEN}    Auto-skipping Toolhead Katapult deployer step.${NC}\n"
+        local thr_items=(
+            "[1] Flash Toolhead firmware (thr.bin) directly over /dev/ttyS4"
+            "[2] Skip Toolhead flashing"
+            "[3] Force re-deploy Katapult (thr-deployer.bin)"
+            "[b] ⬅️  Back to Main Menu"
+            "[q] 🚪 Exit Installer"
+        )
+        local thr_header="${BLUE}${BOLD}--- PART 2 OF 2: TOOLHEAD BOARD (THR - GD32F303) ---${NC}\n"
+        thr_header+="${GREEN}[✓] Katapult bootloader is already installed on /dev/ttyS4.${NC}\n"
+        thr_header+="Select an action:"
+
+        local thr_res
+        thr_res=$(arrow_menu "$thr_header" thr_items 0)
+        case "$thr_res" in
+            0) thr_state="2" ;; # Direct flash thr.bin
+            1) thr_state="3" ;; # Skip
+            2) thr_state="1" ;; # Force re-deploy
+            3|b|back|menu|m) return 0 ;;
+            4|q|quit|exit) exit 0 ;;
+            *) thr_state="2" ;;
+        esac
+    else
+        local thr_items=(
+            "[1] Super-Stock Factory Qidi (Auto-install Katapult + Flash thr.bin)"
+            "[2] Already has Katapult installed (Flash thr.bin now)"
+            "[3] Skip Toolhead flashing"
+            "[b] ⬅️  Back to Main Menu"
+            "[q] 🚪 Exit Installer"
+        )
+        local thr_header="${BLUE}${BOLD}--- PART 2 OF 2: TOOLHEAD BOARD (THR - GD32F303) ---${NC}\n"
+        thr_header+="Good news! On the AP board, the Toolhead is wired directly to internal\n"
+        thr_header+="port ${BOLD}/dev/ttyS4${NC} at 500,000 speed. No SD card or USB cable needed!\n\n"
+        thr_header+="What is the current state of your Toolhead Board?"
+
+        local thr_res
+        thr_res=$(arrow_menu "$thr_header" thr_items 0)
+        case "$thr_res" in
+            0) thr_state="1" ;; # Stock auto-deployer
+            1) thr_state="2" ;; # Direct flash
+            2) thr_state="3" ;; # Skip
+            3|b|back|menu|m) return 0 ;;
+            4|q|quit|exit) exit 0 ;;
+            *) thr_state="1" ;;
+        esac
+    fi
 
     local ttys4_dev="${SIM_TTYS4:-/dev/ttyS4}"
     if [[ "$thr_state" == "1" ]]; then
@@ -321,6 +487,7 @@ PYEOF
                     echo -e "${YELLOW}[!] Note: If the Toolhead did not respond, power-cycle the printer and run Option 2.${NC}"
                 }
             fi
+            mark_katapult_installed "thr"
             echo -e "${GREEN}[✓] Toolhead Board flashed!${NC}"
         else
             echo -e "${RED}[-] ${ttys4_dev} was not found on this machine.${NC}"
@@ -333,6 +500,7 @@ PYEOF
             else
                 "$PYTHON_BIN" "$FLASHTOOL" -d "$ttys4_dev" -b 500000 -f "$PRECOMPILED_DIR/thr.bin"
             fi
+            mark_katapult_installed "thr"
             echo -e "${GREEN}[✓] Toolhead Board flashed!${NC}"
         else
             echo -e "${RED}[-] ${ttys4_dev} was not found on this machine.${NC}"
@@ -359,35 +527,64 @@ install_box_firmware() {
     local target_cfg
     target_cfg=$(get_target_config_dir)
 
-    local box_items=(
-        "[1] Super-Stock Qidi Box (Auto-install Katapult + Flash mmu.bin over USB)"
-        "[2] Already has Katapult installed (Flash mmu.bin over USB)"
-        "[3] Enable Qidi Box in Config Only (Already flashed previously)"
-        "[4] Do NOT use Qidi Box (Disable MMU / Run as Single-Spool Printer)"
-        "[b] ⬅️  Back to Main Menu"
-        "[q] 🚪 Exit Installer"
-    )
-    local box_header="${CYAN}${BOLD}======================================================================${NC}\n"
-    box_header+="${BOLD} 🎨 QIDI BOX (MMU) FIRMWARE & CONFIGURATION (OPTIONAL)${NC}\n"
-    box_header+="${CYAN}======================================================================${NC}\n"
-    box_header+="The Qidi Box uses an STM32F401 chip connected over standard USB.\n"
-    box_header+="Even if your Qidi Box is 100% factory stock, we can deploy Katapult\n"
-    box_header+="and flash our firmware directly over the USB cable!\n\n"
-    box_header+="Choose an option:"
-
-    local box_res
-    box_res=$(arrow_menu "$box_header" box_items 0)
     local box_opt=""
+    if is_katapult_installed_mmu; then
+        echo -e "${GREEN}${BOLD}[✓] Katapult bootloader detected on Qidi Box!${NC}"
+        echo -e "${GREEN}    Auto-skipping Qidi Box deployer step.${NC}\n"
+        local box_items=(
+            "[1] Flash Qidi Box firmware (mmu.bin) directly over USB"
+            "[2] Enable Qidi Box in Config Only (Already flashed previously)"
+            "[3] Force re-deploy Katapult (mmu-deployer.bin)"
+            "[4] Do NOT use Qidi Box (Disable MMU / Run as Single-Spool Printer)"
+            "[b] ⬅️  Back to Main Menu"
+            "[q] 🚪 Exit Installer"
+        )
+        local box_header="${CYAN}${BOLD}======================================================================${NC}\n"
+        box_header+="${BOLD} 🎨 QIDI BOX (MMU) FIRMWARE & CONFIGURATION (OPTIONAL)${NC}\n"
+        box_header+="${CYAN}======================================================================${NC}\n"
+        box_header+="${GREEN}[✓] Katapult bootloader is already installed on the Qidi Box.${NC}\n\n"
+        box_header+="Select an action:"
 
-    case "$box_res" in
-        0) box_opt="1" ;;
-        1) box_opt="2" ;;
-        2) box_opt="3" ;;
-        3) box_opt="4" ;;
-        4|b|back|menu|m) return 0 ;;
-        5|q|quit|exit) exit 0 ;;
-        *) return 0 ;;
-    esac
+        local box_res
+        box_res=$(arrow_menu "$box_header" box_items 0)
+        case "$box_res" in
+            0) box_opt="2" ;; # Direct flash mmu.bin (Katapult ready)
+            1) box_opt="3" ;; # Config only
+            2) box_opt="1" ;; # Force re-deploy Katapult
+            3) box_opt="4" ;; # Disable MMU
+            4|b|back|menu|m) return 0 ;;
+            5|q|quit|exit) exit 0 ;;
+            *) return 0 ;;
+        esac
+    else
+        local box_items=(
+            "[1] Super-Stock Qidi Box (Auto-install Katapult + Flash mmu.bin over USB)"
+            "[2] Already has Katapult installed (Flash mmu.bin over USB)"
+            "[3] Enable Qidi Box in Config Only (Already flashed previously)"
+            "[4] Do NOT use Qidi Box (Disable MMU / Run as Single-Spool Printer)"
+            "[b] ⬅️  Back to Main Menu"
+            "[q] 🚪 Exit Installer"
+        )
+        local box_header="${CYAN}${BOLD}======================================================================${NC}\n"
+        box_header+="${BOLD} 🎨 QIDI BOX (MMU) FIRMWARE & CONFIGURATION (OPTIONAL)${NC}\n"
+        box_header+="${CYAN}======================================================================${NC}\n"
+        box_header+="The Qidi Box uses an STM32F401 chip connected over standard USB.\n"
+        box_header+="Even if your Qidi Box is 100% factory stock, we can deploy Katapult\n"
+        box_header+="and flash our firmware directly over the USB cable!\n\n"
+        box_header+="Choose an option:"
+
+        local box_res
+        box_res=$(arrow_menu "$box_header" box_items 0)
+        case "$box_res" in
+            0) box_opt="1" ;;
+            1) box_opt="2" ;;
+            2) box_opt="3" ;;
+            3) box_opt="4" ;;
+            4|b|back|menu|m) return 0 ;;
+            5|q|quit|exit) exit 0 ;;
+            *) return 0 ;;
+        esac
+    fi
 
     case "$box_opt" in
         1|2)
@@ -423,6 +620,7 @@ install_box_firmware() {
                         sed -i "s|serial:.*|serial: ${mmu_dev}|g" "$mmu_cfg"
                     fi
                 done
+                mark_katapult_installed "mmu"
                 echo -e "${GREEN}[✓] Qidi Box firmware flashed and serial updated!${NC}"
             fi
             # Enable MMU in printer.cfg
@@ -430,6 +628,7 @@ install_box_firmware() {
             systemctl start klipper 2>/dev/null || true
             ;;
         3)
+            mark_katapult_installed "mmu"
             enable_mmu_in_config "$target_cfg/printer.cfg"
             systemctl restart klipper 2>/dev/null || true
             ;;
@@ -510,6 +709,9 @@ case "${1:-}" in
         ;;
     --box)
         install_box_firmware
+        ;;
+    --source-only)
+        return 0 2>/dev/null || exit 0
         ;;
     *)
         fw_items=(

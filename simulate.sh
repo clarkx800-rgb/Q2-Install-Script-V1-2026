@@ -24,30 +24,40 @@ echo -e "${CYAN}================================================================
 echo -e "Sandbox Location: ${BOLD}${SIM_DIR}${NC}"
 echo -e "Setting up mock AP board environment (UART /dev/ttyS4, USB serial, configs)..."
 
+RERUN_MODE=0
+if [[ "${1:-}" =~ ^(--keep|--rerun|-k|-r)$ ]]; then
+    RERUN_MODE=1
+fi
+
 # 1. Clean and initialize sandbox structure
-rm -rf "$SIM_DIR"
-mkdir -p "$SIM_DIR"/{bin,dev/serial/by-id,etc/sysctl.d,etc/modprobe.d,etc/udev/rules.d,etc/default,etc/systemd/system,printer_data/config,q2_ap_backups}
+if [[ $RERUN_MODE -eq 0 ]]; then
+    rm -rf "$SIM_DIR"
+    mkdir -p "$SIM_DIR"/{bin,dev/serial/by-id,etc/sysctl.d,etc/modprobe.d,etc/udev/rules.d,etc/default,etc/systemd/system,printer_data/config,q2_ap_backups}
 
-# 2. Populate mock hardware serial devices
-touch "$SIM_DIR/dev/serial/by-id/usb-Klipper_stm32f407xx_643732373534350E35353635-if00"
-touch "$SIM_DIR/dev/serial/by-id/usb-Klipper_stm32f401xc_7845123698520147-if00"
-touch "$SIM_DIR/dev/ttyS4"
+    # 2. Populate mock hardware serial devices
+    touch "$SIM_DIR/dev/serial/by-id/usb-Klipper_stm32f407xx_643732373534350E35353635-if00"
+    touch "$SIM_DIR/dev/serial/by-id/usb-Klipper_stm32f401xc_7845123698520147-if00"
+    touch "$SIM_DIR/dev/ttyS4"
 
-# 3. Create mock Linux OS files
-cat << 'EOF' > "$SIM_DIR/etc/fstab"
+    # 3. Create mock Linux OS files
+    cat << 'EOF' > "$SIM_DIR/etc/fstab"
 UUID=4a89c0de-1122-3344 / ext4 defaults,sync 0 1
 EOF
 
-cat << 'EOF' > "$SIM_DIR/etc/default/cpufrequtils"
+    cat << 'EOF' > "$SIM_DIR/etc/default/cpufrequtils"
 ENABLE="true"
 GOVERNOR="ondemand"
 EOF
 
-# Create a 4MB zero-filled mock boot partition image
-dd if=/dev/zero of="$SIM_DIR/mock_boot_partition.img" bs=1M count=4 status=none 2>/dev/null || true
+    # Create a 4MB zero-filled mock boot partition image
+    dd if=/dev/zero of="$SIM_DIR/mock_boot_partition.img" bs=1M count=4 status=none 2>/dev/null || true
 
-# 4. Copy initial baseline configurations into simulated printer_data/config
-cp -rp "$SUITE_ROOT/configs"/* "$SIM_DIR/printer_data/config/" 2>/dev/null || true
+    # 4. Copy initial baseline configurations into simulated printer_data/config
+    cp -rp "$SUITE_ROOT/configs"/* "$SIM_DIR/printer_data/config/" 2>/dev/null || true
+else
+    echo -e "${GREEN}[*] Re-run mode active! Preserving previous sandbox state and Katapult markers...${NC}"
+    mkdir -p "$SIM_DIR"/{bin,dev/serial/by-id,etc/sysctl.d,etc/modprobe.d,etc/udev/rules.d,etc/default,etc/systemd/system,printer_data/config,q2_ap_backups}
+fi
 
 # 5. Generate mock system binaries in $SIM_DIR/bin
 cat << 'EOF' > "$SIM_DIR/bin/systemctl"
@@ -112,4 +122,5 @@ echo -e "Your real PC was untouched. You can inspect the simulated sandbox chang
 echo -e "  • Simulated Configs: ${BOLD}ls -la ${SIM_DIR}/printer_data/config/${NC}"
 echo -e "  • Simulated Backups: ${BOLD}ls -la ${SIM_DIR}/q2_ap_backups/${NC}"
 echo -e "  • Simulated fstab:   ${BOLD}cat ${SIM_DIR}/etc/fstab${NC}"
+echo -e "  • Test Katapult Re-run Auto-Detect: ${BOLD}./simulate.sh --rerun${NC}"
 echo -e "${CYAN}========================================================================${NC}"
