@@ -10,7 +10,7 @@
 	],
 	"compatible_printers": [
 		"Qidi Q2 0.4 nozzle",
-		"Qidi Q2 0.4 nozzle - Pucci"
+		"Qidi Q2 0.4 nozzle"
 	],
 	"default_filament_colour": [
 		"#404040"

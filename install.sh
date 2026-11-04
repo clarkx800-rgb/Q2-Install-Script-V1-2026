@@ -41,7 +41,7 @@ echo -e "${YELLOW}${BOLD}   ⚠️  CRITICAL WARNING & LIABILITY DISCLAIMER — 
 echo -e "${RED}${BOLD}========================================================================${NC}"
 echo -e "  1. ${BOLD}UNTESTED INSTALL SCRIPT:${NC} This installer script wrapper was packaged"
 echo -e "     from a pre-migration backup and ${RED}${BOLD}HAS NEVER BEEN TESTED${NC} on a live machine."
-echo -e "  2. ${BOLD}ZERO LIABILITY:${NC} The author (${BOLD}clarkx800-rgb / Pucci${NC}) is ${RED}${BOLD}NOT responsible${NC}"
+echo -e "  2. ${BOLD}ZERO LIABILITY:${NC} The repository author (${BOLD}clarkx800-rgb${NC}) is ${RED}${BOLD}NOT responsible${NC}"
 echo -e "     for any damages, bricked boards, fires, injuries, or anything else."
 echo -e "  3. ${BOLD}NO SUPPORT:${NC} Provided strictly 'AS-IS' with ${RED}${BOLD}NO support${NC} whatsoever."
 echo -e "  4. ${BOLD}CREDITS:${NC} Built on upstream work by n3oney, Kalico, Klipper, Arksine"
