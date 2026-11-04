@@ -676,7 +676,7 @@
     }
   },
   "update": {
-    "dismissed_version": "1.0.3"
+    "dismissed_version": "1.0.7"
   },
   "wifi_enabled": true,
   "wifi_expected": true,

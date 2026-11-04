@@ -108,23 +108,24 @@ while true; do
     echo -e "  Welcome! Choose one item at a time. Before any change is made, you"
     echo -e "  will be asked to ${BOLD}name a backup snapshot${NC} so you can restore 100% anytime."
     echo ""
-    echo -e "  ${BLUE}${BOLD}--- FIRMWARE & MACROS ---${NC}"
+    echo -e "  ${BLUE}${BOLD}--- FIRMWARE, MACROS & TOOLS ---${NC}"
     echo -e "  [${GREEN}1${NC}] 🖨️  ${BOLD}Install Printer Firmware${NC} (Motion Mainboard MCU + Toolhead MCU)"
     echo -e "  [${GREEN}2${NC}] 🎨 ${BOLD}Install / Configure Qidi Box MMU Firmware${NC} (Optional / Separate)"
-    echo -e "  [${GREEN}3${NC}] 🧩 ${BOLD}Macro Setup:${NC} Install Pucci's Macros OR Keep Your Own Macros"
-    echo -e "  [${YELLOW}4${NC}] ⏪ ${BOLD}Restore Your Previous Macros${NC} (If you don't like Pucci's macros)"
+    echo -e "  [${GREEN}3${NC}] 🧵 ${BOLD}Spoolman Manager Setup${NC} (Optional: Connect to PC / Server IP)"
+    echo -e "  [${GREEN}4${NC}] 🧩 ${BOLD}Macro Setup:${NC} Install Pucci's Macros OR Keep Your Own Macros"
+    echo -e "  [${YELLOW}5${NC}] ⏪ ${BOLD}Restore Your Previous Macros${NC} (If you don't like Pucci's macros)"
     echo ""
     echo -e "  ${BLUE}${BOLD}--- AP BOARD REFINEMENTS (EACH SEPARATE & RESTORABLE) ---${NC}"
-    echo -e "  [${GREEN}5${NC}] 📡 ${BOLD}Network Adapter Refinement${NC} (Apply or Restore Wi-Fi Sleep Fix)"
-    echo -e "  [${GREEN}6${NC}] ⚡ ${BOLD}AP Board 'Timer Too Close' Refinement${NC} (Apply or Restore CPU/Disk Fix)"
-    echo -e "  [${GREEN}7${NC}] 🐧 ${BOLD}N3oney's Modern 5.10 Linux Kernel${NC} (Install or Restore q2_boot.img)"
+    echo -e "  [${GREEN}6${NC}] 📡 ${BOLD}Network Adapter Refinement${NC} (Apply or Restore Wi-Fi Sleep Fix)"
+    echo -e "  [${GREEN}7${NC}] ⚡ ${BOLD}AP Board 'Timer Too Close' Refinement${NC} (Apply or Restore CPU/Disk Fix)"
+    echo -e "  [${GREEN}8${NC}] 🐧 ${BOLD}N3oney's Modern 5.10 Linux Kernel${NC} (Install or Restore q2_boot.img)"
     echo ""
     echo -e "  ${BLUE}${BOLD}--- BACKUP, RESTORE & HELP ---${NC}"
-    echo -e "  [${CYAN}8${NC}] 🔄 ${BOLD}Universal Restore Center${NC} (Restore 100% from any named backup)"
-    echo -e "  [${CYAN}9${NC}] 📖 ${BOLD}Tips, Instructions, Firmware Anatomy & Troubleshooting${NC}"
+    echo -e "  [${CYAN}9${NC}] 🔄 ${BOLD}Universal Restore Center${NC} (Restore 100% from any named backup)"
+    echo -e "  [${CYAN}10${NC}] 📖 ${BOLD}Tips, Instructions, Firmware Anatomy & Troubleshooting${NC}"
     echo -e "  [${RED}0${NC}] 🚪 Exit Installer"
     echo -e "${CYAN}========================================================================${NC}"
-    read -rp "👉 Enter your choice [0-9]: " main_opt
+    read -rp "👉 Enter your choice [0-10]: " main_opt
 
     case "$main_opt" in
         1)
@@ -138,39 +139,43 @@ while true; do
             pause_return
             ;;
         3)
-            bash "$SCRIPTS_DIR/manage_macros.sh" --choose
+            bash "$SCRIPTS_DIR/configure_spoolman.sh"
             pause_return
             ;;
         4)
-            bash "$SCRIPTS_DIR/manage_macros.sh" --restore
+            bash "$SCRIPTS_DIR/manage_macros.sh" --choose
             pause_return
             ;;
         5)
+            bash "$SCRIPTS_DIR/manage_macros.sh" --restore
+            pause_return
+            ;;
+        6)
             submenu_refinement \
                 "📡 NETWORK ADAPTER REFINEMENT (Wi-Fi Sleep Killer + 2MB TCP Buffers)" \
                 "network_refinement" \
                 "$SCRIPTS_DIR/apply_network_refinement.sh" \
                 "--network-only"
             ;;
-        6)
+        7)
             submenu_refinement \
                 "⚡ AP BOARD 'TIMER TOO CLOSE' REFINEMENT (1.1GHz Lock + Disk Unchoke)" \
                 "ap_board_refinement" \
                 "$SCRIPTS_DIR/apply_ap_board_refinement.sh" \
                 "--ap-only"
             ;;
-        7)
+        8)
             submenu_refinement \
                 "🐧 N3ONEY MODERN 5.10 LINUX KERNEL (q2_boot.img)" \
                 "kernel" \
                 "$SCRIPTS_DIR/flash_kernel.sh" \
                 "--kernel-only"
             ;;
-        8)
+        9)
             bash "$SUITE_ROOT/restore.sh"
             pause_return
             ;;
-        9)
+        10)
             bash "$SCRIPTS_DIR/docs_menu.sh"
             ;;
         0|q|Q)
@@ -179,7 +184,7 @@ while true; do
             exit 0
             ;;
         *)
-            echo -e "${RED}Invalid option. Please enter a number from 0 to 9.${NC}"
+            echo -e "${RED}Invalid option. Please enter a number from 0 to 10.${NC}"
             sleep 1
             ;;
     esac

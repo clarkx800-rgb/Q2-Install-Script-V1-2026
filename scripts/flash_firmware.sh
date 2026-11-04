@@ -349,15 +349,26 @@ enable_mmu_in_config() {
     local cfg_file="$1"
     [[ ! -f "$cfg_file" ]] && return 0
     python3 - << PYEOF
-import re
+import os, re
 p = "$cfg_file"
 with open(p, "r") as f:
     c = f.read()
-block = """# <MMU_SUITE_START>
+
+# Check if spoolman is actively enabled in moonraker.conf
+cfg_dir = os.path.dirname(p)
+mr_path = os.path.join(cfg_dir, "moonraker.conf")
+spoolman_line = "#[include sync_spoolman.cfg]"
+if os.path.isfile(mr_path):
+    with open(mr_path, "r") as mf:
+        mc = mf.read()
+    if re.search(r"^\s*\[spoolman\]", mc, re.MULTILINE):
+        spoolman_line = "[include sync_spoolman.cfg]"
+
+block = f"""# <MMU_SUITE_START>
 [include mmu.cfg]
 [include mmu_custom_actions.cfg]
 [include mmu_ui_bridge.cfg]
-[include sync_spoolman.cfg]
+{spoolman_line}
 # <MMU_SUITE_END>"""
 if "# <MMU_SUITE_START>" in c:
     c = re.sub(r"# <MMU_SUITE_START>.*?# <MMU_SUITE_END>", block, c, flags=re.DOTALL)

@@ -79,23 +79,27 @@ sudo bash install.sh
 ========================================================================
    🛠️  QIDI Q2 AP BOARD — COMMUNITY INSTALLER & RESCUE CONTROL CENTER
 ========================================================================
-  --- FIRMWARE & MACROS ---
+  --- FIRMWARE, MACROS & TOOLS ---
   [1] 🖨️  Install Printer Firmware (Motion Mainboard MCU + Toolhead MCU)
   [2] 🎨 Install / Configure Qidi Box MMU Firmware (Optional / Separate)
-  [3] 🧩 Macro Setup: Install Pucci's Macros OR Keep Your Own Macros
-  [4] ⏪ Restore Your Previous Macros (If you don't like Pucci's macros)
+  [3] 🧵 Spoolman Manager Setup (Optional: Connect to PC / Server IP)
+  [4] 🧩 Macro Setup: Install Pucci's Macros OR Keep Your Own Macros
+  [5] ⏪ Restore Your Previous Macros (If you don't like Pucci's macros)
 
   --- AP BOARD REFINEMENTS (EACH SEPARATE & RESTORABLE) ---
-  [5] 📡 Network Adapter Refinement (Apply or Restore Wi-Fi Sleep Fix)
-  [6] ⚡ AP Board 'Timer Too Close' Refinement (Apply or Restore CPU/Disk Fix)
-  [7] 🐧 N3oney's Modern 5.10 Linux Kernel (Install or Restore q2_boot.img)
+  [6] 📡 Network Adapter Refinement (Apply or Restore Wi-Fi Sleep Fix)
+  [7] ⚡ AP Board 'Timer Too Close' Refinement (Apply or Restore CPU/Disk Fix)
+  [8] 🐧 N3oney's Modern 5.10 Linux Kernel (Install or Restore q2_boot.img)
 
   --- BACKUP, RESTORE & HELP ---
-  [8] 🔄 Universal Restore Center (Restore 100% from any named backup)
-  [9] 📖 Tips, Instructions, Firmware Anatomy & Troubleshooting
+  [9] 🔄 Universal Restore Center (Restore 100% from any named backup)
+  [10] 📖 Tips, Instructions, Firmware Anatomy & Troubleshooting
   [0] 🚪 Exit Installer
 ========================================================================
 ```
+
+* **HelixScreen UI:** Pre-configured for HelixScreen v1.0.7 touchscreen layouts.
+* **Optional Spoolman Integration:** Spoolman is completely disabled by default. If you run Spoolman on your PC or home server, select **Option 3** and type your PC's local IP address to automatically link Moonraker and Happy Hare!
 
 ---
 
