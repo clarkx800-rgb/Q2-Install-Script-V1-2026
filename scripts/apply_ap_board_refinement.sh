@@ -18,32 +18,39 @@ echo -e "${CYAN}${BOLD}=========================================================
 echo -e "${BOLD} ⚡ APPLYING AP BOARD 'TIMER TOO CLOSE' REFINEMENTS${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
-if [[ $EUID -ne 0 ]]; then
+ETC_DIR="${SIM_ETC:-/etc}"
+
+if [[ "${SIM_MODE:-0}" != "1" && $EUID -ne 0 ]]; then
     echo "[-] Error: Must be run with sudo."
     exit 1
 fi
 
 echo "[1/4] Locking Rockchip RK3308 4-core CPU to 1.1 GHz Performance mode..."
-if command -v apt-get >/dev/null 2>&1; then
+if [[ "${SIM_MODE:-0}" != "1" ]] && command -v apt-get >/dev/null 2>&1; then
     if ! command -v cpufreq-set >/dev/null 2>&1; then
         apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq cpufrequtils >/dev/null 2>&1 || true
     fi
 fi
 if [[ -f "$TUNING_DIR/cpufrequtils" ]]; then
-    cp "$TUNING_DIR/cpufrequtils" /etc/default/cpufrequtils
+    mkdir -p "$ETC_DIR/default"
+    cp "$TUNING_DIR/cpufrequtils" "$ETC_DIR/default/cpufrequtils"
 fi
 if command -v cpufreq-set >/dev/null 2>&1; then
     cpufreq-set -r -g performance 2>/dev/null || true
 fi
-for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-    [[ -w "$gov" ]] && echo "performance" > "$gov" 2>/dev/null || true
-done
+if [[ "${SIM_MODE:-0}" != "1" ]]; then
+    for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+        [[ -w "$gov" ]] && echo "performance" > "$gov" 2>/dev/null || true
+    done
+fi
 echo -e "${GREEN}      [✓] CPU locked to maximum performance (no clock-scaling stutters).${NC}"
 
 echo "[2/4] Optimizing eMMC flash storage writes in /etc/fstab..."
-if grep -q "sync" /etc/fstab 2>/dev/null; then
-    sed -i.bak_q2 's/\bsync\b/rw,noatime,commit=30/g' /etc/fstab
-    mount -o remount / 2>/dev/null || true
+if [[ -f "$ETC_DIR/fstab" ]] && grep -q "sync" "$ETC_DIR/fstab" 2>/dev/null; then
+    sed -i.bak_q2 's/\bsync\b/rw,noatime,commit=30/g' "$ETC_DIR/fstab"
+    if [[ "${SIM_MODE:-0}" != "1" ]]; then
+        mount -o remount / 2>/dev/null || true
+    fi
     echo -e "${GREEN}      [✓] Replaced slow blocking 'sync' with fast 'noatime,commit=30'.${NC}"
 else
     echo -e "${GREEN}      [✓] /etc/fstab storage flags are already non-blocking.${NC}"

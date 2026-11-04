@@ -18,17 +18,21 @@ echo -e "${CYAN}${BOLD}=========================================================
 echo -e "${BOLD} 📡 APPLYING NETWORK ADAPTER REFINEMENTS (AP BOARD)${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
-if [[ $EUID -ne 0 ]]; then
+ETC_DIR="${SIM_ETC:-/etc}"
+
+if [[ "${SIM_MODE:-0}" != "1" && $EUID -ne 0 ]]; then
     echo "[-] Error: Must be run with sudo."
     exit 1
 fi
 
 echo "[1/3] Disabling Realtek RTL8821CS Wi-Fi power-save sleep..."
 if [[ -f "$TUNING_DIR/8821cs.conf" ]]; then
-    cp "$TUNING_DIR/8821cs.conf" /etc/modprobe.d/8821cs.conf
+    mkdir -p "$ETC_DIR/modprobe.d"
+    cp "$TUNING_DIR/8821cs.conf" "$ETC_DIR/modprobe.d/8821cs.conf"
 fi
 if [[ -f "$TUNING_DIR/70-wifi-powersave.rules" ]]; then
-    cp "$TUNING_DIR/70-wifi-powersave.rules" /etc/udev/rules.d/70-wifi-powersave.rules
+    mkdir -p "$ETC_DIR/udev/rules.d"
+    cp "$TUNING_DIR/70-wifi-powersave.rules" "$ETC_DIR/udev/rules.d/70-wifi-powersave.rules"
     udevadm control --reload-rules 2>/dev/null || true
 fi
 if command -v iw >/dev/null 2>&1; then
@@ -37,17 +41,20 @@ fi
 echo -e "${GREEN}      [✓] Wi-Fi sleep mode disabled.${NC}"
 
 echo "[2/3] Configuring systemd wlan0 stay-awake override..."
-if systemctl list-unit-files makerbase-wlan0.service >/dev/null 2>&1; then
-    mkdir -p /etc/systemd/system/makerbase-wlan0.service.d
-    cp "$TUNING_DIR/makerbase-wlan0-override.conf" /etc/systemd/system/makerbase-wlan0.service.d/override.conf
+if systemctl list-unit-files makerbase-wlan0.service >/dev/null 2>&1 || [[ "${SIM_MODE:-0}" == "1" ]]; then
+    mkdir -p "$ETC_DIR/systemd/system/makerbase-wlan0.service.d"
+    cp "$TUNING_DIR/makerbase-wlan0-override.conf" "$ETC_DIR/systemd/system/makerbase-wlan0.service.d/override.conf"
     systemctl daemon-reload 2>/dev/null || true
 fi
 echo -e "${GREEN}      [✓] Systemd network override installed.${NC}"
 
 echo "[3/3] Expanding TCP socket buffers & enabling Fast Open..."
 if [[ -f "$TUNING_DIR/99-klipper-tuning.conf" ]]; then
-    cp "$TUNING_DIR/99-klipper-tuning.conf" /etc/sysctl.d/99-klipper-tuning.conf
-    sysctl -p /etc/sysctl.d/99-klipper-tuning.conf >/dev/null 2>&1 || sysctl --system >/dev/null 2>&1 || true
+    mkdir -p "$ETC_DIR/sysctl.d"
+    cp "$TUNING_DIR/99-klipper-tuning.conf" "$ETC_DIR/sysctl.d/99-klipper-tuning.conf"
+    if [[ "${SIM_MODE:-0}" != "1" ]]; then
+        sysctl -p "$ETC_DIR/sysctl.d/99-klipper-tuning.conf" >/dev/null 2>&1 || sysctl --system >/dev/null 2>&1 || true
+    fi
 fi
 echo -e "${GREEN}      [✓] TCP socket buffers optimized (2MB ceiling, zero idle lag).${NC}"
 

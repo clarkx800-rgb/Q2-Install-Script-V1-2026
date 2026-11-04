@@ -12,7 +12,8 @@ TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 HUMAN_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
 REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME=$(eval echo "~$REAL_USER")
-BACKUP_ROOT_DIR="$USER_HOME/q2_ap_backups"
+BACKUP_ROOT_DIR="${SIM_BACKUP_ROOT:-$USER_HOME/q2_ap_backups}"
+ETC_DIR="${SIM_ETC:-/etc}"
 
 # ANSI Colors
 RED='\033[0;31m'
@@ -53,15 +54,17 @@ echo ""
 echo -e "${CYAN}[*] Creating backup '${BOLD}${SAFE_NAME}${NC}${CYAN}' at: ${BACKUP_DIR}${NC}"
 
 # 1. Locate and copy Klipper configuration
-CONFIG_SOURCE=""
-if [[ -d "$USER_HOME/printer_data/config" ]]; then
-    CONFIG_SOURCE="$USER_HOME/printer_data/config"
-elif [[ -d "/home/mks/printer_data/config" ]]; then
-    CONFIG_SOURCE="/home/mks/printer_data/config"
-elif [[ -d "/home/mks/klipper_config" ]]; then
-    CONFIG_SOURCE="/home/mks/klipper_config"
-elif [[ -d "$USER_HOME/klipper_config" ]]; then
-    CONFIG_SOURCE="$USER_HOME/klipper_config"
+CONFIG_SOURCE="${SIM_CONFIG_DIR:-}"
+if [[ -z "$CONFIG_SOURCE" ]]; then
+    if [[ -d "$USER_HOME/printer_data/config" ]]; then
+        CONFIG_SOURCE="$USER_HOME/printer_data/config"
+    elif [[ -d "/home/mks/printer_data/config" ]]; then
+        CONFIG_SOURCE="/home/mks/printer_data/config"
+    elif [[ -d "/home/mks/klipper_config" ]]; then
+        CONFIG_SOURCE="/home/mks/klipper_config"
+    elif [[ -d "$USER_HOME/klipper_config" ]]; then
+        CONFIG_SOURCE="$USER_HOME/klipper_config"
+    fi
 fi
 
 if [[ -n "$CONFIG_SOURCE" && -d "$CONFIG_SOURCE" ]]; then
@@ -72,13 +75,13 @@ fi
 
 # 2. Save System, CPU, fstab & Network Rules
 echo -e "    • Saving AP board system & network settings..."
-[[ -f /etc/fstab ]] && cp -p /etc/fstab "$BACKUP_DIR/system/fstab" || true
-[[ -f /etc/default/cpufrequtils ]] && cp -p /etc/default/cpufrequtils "$BACKUP_DIR/system/cpufrequtils" || true
-[[ -f /etc/sysctl.d/99-klipper-tuning.conf ]] && cp -p /etc/sysctl.d/99-klipper-tuning.conf "$BACKUP_DIR/system/99-klipper-tuning.conf" || true
-[[ -f /etc/udev/rules.d/70-wifi-powersave.rules ]] && cp -p /etc/udev/rules.d/70-wifi-powersave.rules "$BACKUP_DIR/system/70-wifi-powersave.rules" || true
-[[ -f /etc/modprobe.d/8821cs.conf ]] && cp -p /etc/modprobe.d/8821cs.conf "$BACKUP_DIR/system/8821cs.conf" || true
-if [[ -d /etc/systemd/system/makerbase-wlan0.service.d ]]; then
-    cp -rp /etc/systemd/system/makerbase-wlan0.service.d "$BACKUP_DIR/system/" 2>/dev/null || true
+[[ -f "$ETC_DIR/fstab" ]] && cp -p "$ETC_DIR/fstab" "$BACKUP_DIR/system/fstab" || true
+[[ -f "$ETC_DIR/default/cpufrequtils" ]] && cp -p "$ETC_DIR/default/cpufrequtils" "$BACKUP_DIR/system/cpufrequtils" || true
+[[ -f "$ETC_DIR/sysctl.d/99-klipper-tuning.conf" ]] && cp -p "$ETC_DIR/sysctl.d/99-klipper-tuning.conf" "$BACKUP_DIR/system/99-klipper-tuning.conf" || true
+[[ -f "$ETC_DIR/udev/rules.d/70-wifi-powersave.rules" ]] && cp -p "$ETC_DIR/udev/rules.d/70-wifi-powersave.rules" "$BACKUP_DIR/system/70-wifi-powersave.rules" || true
+[[ -f "$ETC_DIR/modprobe.d/8821cs.conf" ]] && cp -p "$ETC_DIR/modprobe.d/8821cs.conf" "$BACKUP_DIR/system/8821cs.conf" || true
+if [[ -d "$ETC_DIR/systemd/system/makerbase-wlan0.service.d" ]]; then
+    cp -rp "$ETC_DIR/systemd/system/makerbase-wlan0.service.d" "$BACKUP_DIR/system/" 2>/dev/null || true
 fi
 
 # Record active/enabled state of Makerbase services
@@ -91,17 +94,19 @@ done
 
 # 3. Save Kernel Boot Partition if category is kernel or full_system
 if [[ "$CATEGORY" == "kernel" || "$CATEGORY" == "full_system" ]]; then
-    BOOT_PART=""
-    if [[ -e /dev/disk/by-partlabel/boot ]]; then
-        BOOT_PART="/dev/disk/by-partlabel/boot"
-    elif [[ -e /dev/disk/by-partlabel/BOOT ]]; then
-        BOOT_PART="/dev/disk/by-partlabel/BOOT"
-    elif command -v lsblk >/dev/null 2>&1; then
-        FOUND=$(lsblk -ln -o PATH,PARTLABEL 2>/dev/null | grep -wi "boot" | awk '{print $1}' | head -n 1 || true)
-        [[ -n "$FOUND" && -e "$FOUND" ]] && BOOT_PART="$FOUND"
+    BOOT_PART="${SIM_BOOT_PART:-}"
+    if [[ -z "$BOOT_PART" ]]; then
+        if [[ -e /dev/disk/by-partlabel/boot ]]; then
+            BOOT_PART="/dev/disk/by-partlabel/boot"
+        elif [[ -e /dev/disk/by-partlabel/BOOT ]]; then
+            BOOT_PART="/dev/disk/by-partlabel/BOOT"
+        elif command -v lsblk >/dev/null 2>&1; then
+            FOUND=$(lsblk -ln -o PATH,PARTLABEL 2>/dev/null | grep -wi "boot" | awk '{print $1}' | head -n 1 || true)
+            [[ -n "$FOUND" && -e "$FOUND" ]] && BOOT_PART="$FOUND"
+        fi
     fi
 
-    if [[ -n "$BOOT_PART" && -b "$BOOT_PART" ]]; then
+    if [[ -n "$BOOT_PART" && (-b "$BOOT_PART" || -f "$BOOT_PART") ]]; then
         echo -e "    • Backing up stock Linux kernel partition (${BOOT_PART})..."
         dd if="$BOOT_PART" of="$BACKUP_DIR/system/factory_boot.img" bs=4M conv=fsync status=none 2>/dev/null || true
         echo "$BOOT_PART" > "$BACKUP_DIR/boot_partition_path.txt"
@@ -137,7 +142,7 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-if [[ $EUID -ne 0 ]]; then
+if [[ "${SIM_MODE:-0}" != "1" && $EUID -ne 0 ]]; then
     echo -e "${RED}[-] Please run with sudo: sudo bash $0 $MODE${NC}"
     exit 1
 fi

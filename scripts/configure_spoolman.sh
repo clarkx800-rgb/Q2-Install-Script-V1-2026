@@ -21,6 +21,10 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 get_target_config_dir() {
+    if [[ -n "${SIM_CONFIG_DIR:-}" ]]; then
+        echo "$SIM_CONFIG_DIR"
+        return 0
+    fi
     if [[ -d "$USER_HOME/printer_data/config" ]]; then
         echo "$USER_HOME/printer_data/config"
     elif [[ -d "/home/mks/printer_data/config" ]]; then

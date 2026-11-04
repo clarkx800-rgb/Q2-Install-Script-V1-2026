@@ -20,7 +20,7 @@ echo -e "${CYAN}${BOLD}=========================================================
 echo -e "${BOLD} 🐧 [QIDI AP BOARD] N3ONEY MODERN 5.10 LINUX KERNEL INSTALLER${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
-if [[ $EUID -ne 0 ]]; then
+if [[ "${SIM_MODE:-0}" != "1" && $EUID -ne 0 ]]; then
     echo -e "${RED}[-] Error: This operation requires root privileges (sudo).${NC}"
     exit 1
 fi
@@ -31,14 +31,16 @@ if [[ ! -f "$KERNEL_IMG" ]]; then
 fi
 
 # Detect boot partition
-BOOT_PART=""
-if [[ -e /dev/disk/by-partlabel/boot ]]; then
-    BOOT_PART="/dev/disk/by-partlabel/boot"
-elif [[ -e /dev/disk/by-partlabel/BOOT ]]; then
-    BOOT_PART="/dev/disk/by-partlabel/BOOT"
-elif command -v lsblk >/dev/null 2>&1; then
-    FOUND=$(lsblk -ln -o PATH,PARTLABEL 2>/dev/null | grep -wi "boot" | awk '{print $1}' | head -n 1 || true)
-    [[ -n "$FOUND" && -e "$FOUND" ]] && BOOT_PART="$FOUND"
+BOOT_PART="${SIM_BOOT_PART:-}"
+if [[ -z "$BOOT_PART" ]]; then
+    if [[ -e /dev/disk/by-partlabel/boot ]]; then
+        BOOT_PART="/dev/disk/by-partlabel/boot"
+    elif [[ -e /dev/disk/by-partlabel/BOOT ]]; then
+        BOOT_PART="/dev/disk/by-partlabel/BOOT"
+    elif command -v lsblk >/dev/null 2>&1; then
+        FOUND=$(lsblk -ln -o PATH,PARTLABEL 2>/dev/null | grep -wi "boot" | awk '{print $1}' | head -n 1 || true)
+        [[ -n "$FOUND" && -e "$FOUND" ]] && BOOT_PART="$FOUND"
+    fi
 fi
 
 if [[ -z "$BOOT_PART" ]]; then

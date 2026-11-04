@@ -27,7 +27,7 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-if [[ $EUID -ne 0 ]]; then
+if [[ "${SIM_MODE:-0}" != "1" && $EUID -ne 0 ]]; then
     echo -e "${RED}${BOLD}[-] Please run this installer with sudo:${NC}"
     echo -e "    ${CYAN}sudo bash install.sh${NC}"
     exit 1

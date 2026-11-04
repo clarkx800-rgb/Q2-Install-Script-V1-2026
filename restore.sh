@@ -8,7 +8,7 @@ set -euo pipefail
 PRESET_MODE="${1:-}"
 REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME=$(eval echo "~$REAL_USER")
-BACKUP_ROOT_DIR="$USER_HOME/q2_ap_backups"
+BACKUP_ROOT_DIR="${SIM_BACKUP_ROOT:-$USER_HOME/q2_ap_backups}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -17,7 +17,7 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-if [[ $EUID -ne 0 ]]; then
+if [[ "${SIM_MODE:-0}" != "1" && $EUID -ne 0 ]]; then
     echo -e "${RED}[-] Please run with sudo: sudo bash $0${NC}"
     exit 1
 fi

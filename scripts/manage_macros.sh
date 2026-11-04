@@ -14,7 +14,7 @@ SUITE_CONFIGS="$SUITE_ROOT/configs"
 
 REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME=$(eval echo "~$REAL_USER")
-BACKUP_ROOT_DIR="$USER_HOME/q2_ap_backups"
+BACKUP_ROOT_DIR="${SIM_BACKUP_ROOT:-$USER_HOME/q2_ap_backups}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,6 +25,10 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 get_target_config_dir() {
+    if [[ -n "${SIM_CONFIG_DIR:-}" ]]; then
+        echo "$SIM_CONFIG_DIR"
+        return 0
+    fi
     if [[ -d "$USER_HOME/printer_data/config" ]]; then
         echo "$USER_HOME/printer_data/config"
     elif [[ -d "/home/mks/printer_data/config" ]]; then

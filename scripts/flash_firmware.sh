@@ -41,6 +41,10 @@ ensure_pyserial() {
 }
 
 get_target_config_dir() {
+    if [[ -n "${SIM_CONFIG_DIR:-}" ]]; then
+        echo "$SIM_CONFIG_DIR"
+        return 0
+    fi
     if [[ -d "$USER_HOME/printer_data/config" ]]; then
         echo "$USER_HOME/printer_data/config"
     elif [[ -d "/home/mks/printer_data/config" ]]; then
@@ -57,12 +61,13 @@ select_usb_device() {
     local prompt_title="$1"
     local filter_hint="${2:-}"
     local selected_dev=""
+    local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
 
     while true; do
         echo ""
         echo -e "${BOLD}${prompt_title}${NC}"
-        if [[ -d "/dev/serial/by-id" ]] && [[ -n "$(ls -A /dev/serial/by-id 2>/dev/null)" ]]; then
-            local devices=(/dev/serial/by-id/*)
+        if [[ -d "$serial_dir" ]] && [[ -n "$(ls -A "$serial_dir" 2>/dev/null)" ]]; then
+            local devices=("$serial_dir"/*)
             local count=${#devices[@]}
             local idx=1
             for dev in "${devices[@]}"; do
@@ -83,7 +88,7 @@ select_usb_device() {
                 echo -e "${RED}Invalid selection. Please try again.${NC}"
             fi
         else
-            echo -e "${YELLOW}[!] No USB serial devices detected in /dev/serial/by-id/ yet.${NC}"
+            echo -e "${YELLOW}[!] No USB serial devices detected in ${serial_dir}/ yet.${NC}"
             read -rp "👉 Make sure the USB cable is plugged in. Press ENTER to scan again, or 's' to skip: " retry_choice
             if [[ "$retry_choice" =~ ^[sS]$ ]]; then
                 return 1
@@ -189,13 +194,18 @@ install_printer_firmware() {
         local mb_dev=""
         if mb_dev=$(select_usb_device "Select your Motion Mainboard USB Serial Port (usually stm32f407xx):"); then
             echo -e "${CYAN}[*] Flashing Motion Mainboard (${mb_dev}) with mcu.bin...${NC}"
-            "$PYTHON_BIN" "$FLASHTOOL" -d "$mb_dev" -f "$PRECOMPILED_DIR/mcu.bin" || {
-                echo -e "${YELLOW}[!] Direct flash returned a warning. Waiting 2s and verifying...${NC}"
-            }
-            sleep 2
+            if [[ "${SIM_MODE:-0}" == "1" ]]; then
+                echo -e "${GREEN}    [SIMULATOR] Sent mcu.bin to ${mb_dev}! Microcontroller Flashed 100% OK.${NC}"
+            else
+                "$PYTHON_BIN" "$FLASHTOOL" -d "$mb_dev" -f "$PRECOMPILED_DIR/mcu.bin" || {
+                    echo -e "${YELLOW}[!] Direct flash returned a warning. Waiting 2s and verifying...${NC}"
+                }
+            fi
+            sleep 1
             # Re-check serial path in case it switched from katapult_ to Klipper_
             local new_mb_dev=""
-            for d in /dev/serial/by-id/*stm32f407*; do
+            local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
+            for d in "$serial_dir"/*stm32f407*; do
                 [[ -e "$d" ]] && new_mb_dev="$d" && break
             done
             [[ -z "$new_mb_dev" ]] && new_mb_dev="$mb_dev"
@@ -222,27 +232,39 @@ install_printer_firmware() {
     read -rp "👉 Select option [1-3] (Default: 1): " thr_state
     thr_state="${thr_state:-1}"
 
+    local ttys4_dev="${SIM_TTYS4:-/dev/ttyS4}"
     if [[ "$thr_state" == "1" ]]; then
-        if [[ -e /dev/ttyS4 ]]; then
-            echo -e "${CYAN}[*] Step 1/2: Sending Katapult deployer (thr-deployer.bin) to /dev/ttyS4...${NC}"
-            "$PYTHON_BIN" "$FLASHTOOL" -d /dev/ttyS4 -b 500000 -f "$DEPLOYERS_DIR/thr-deployer.bin" || true
-            echo -e "${CYAN}[*] Waiting 3 seconds for Toolhead to reboot into Katapult...${NC}"
-            sleep 3
+        if [[ -e "$ttys4_dev" ]]; then
+            echo -e "${CYAN}[*] Step 1/2: Sending Katapult deployer (thr-deployer.bin) to ${ttys4_dev}...${NC}"
+            if [[ "${SIM_MODE:-0}" == "1" ]]; then
+                echo -e "${GREEN}    [SIMULATOR] Sent Katapult deployer to ${ttys4_dev}! OK.${NC}"
+            else
+                "$PYTHON_BIN" "$FLASHTOOL" -d "$ttys4_dev" -b 500000 -f "$DEPLOYERS_DIR/thr-deployer.bin" || true
+            fi
+            sleep 1
             echo -e "${CYAN}[*] Step 2/2: Flashing production Toolhead firmware (thr.bin)...${NC}"
-            "$PYTHON_BIN" "$FLASHTOOL" -d /dev/ttyS4 -b 500000 -f "$PRECOMPILED_DIR/thr.bin" || {
-                echo -e "${YELLOW}[!] Note: If the Toolhead did not respond, power-cycle the printer and run Option 2.${NC}"
-            }
+            if [[ "${SIM_MODE:-0}" == "1" ]]; then
+                echo -e "${GREEN}    [SIMULATOR] Sent thr.bin to ${ttys4_dev}! Toolhead Flashed 100% OK.${NC}"
+            else
+                "$PYTHON_BIN" "$FLASHTOOL" -d "$ttys4_dev" -b 500000 -f "$PRECOMPILED_DIR/thr.bin" || {
+                    echo -e "${YELLOW}[!] Note: If the Toolhead did not respond, power-cycle the printer and run Option 2.${NC}"
+                }
+            fi
             echo -e "${GREEN}[✓] Toolhead Board flashed!${NC}"
         else
-            echo -e "${RED}[-] /dev/ttyS4 was not found on this machine.${NC}"
+            echo -e "${RED}[-] ${ttys4_dev} was not found on this machine.${NC}"
         fi
     elif [[ "$thr_state" == "2" ]]; then
-        if [[ -e /dev/ttyS4 ]]; then
-            echo -e "${CYAN}[*] Flashing Toolhead firmware (thr.bin) to /dev/ttyS4 @ 500,000 baud...${NC}"
-            "$PYTHON_BIN" "$FLASHTOOL" -d /dev/ttyS4 -b 500000 -f "$PRECOMPILED_DIR/thr.bin"
+        if [[ -e "$ttys4_dev" ]]; then
+            echo -e "${CYAN}[*] Flashing Toolhead firmware (thr.bin) to ${ttys4_dev} @ 500,000 baud...${NC}"
+            if [[ "${SIM_MODE:-0}" == "1" ]]; then
+                echo -e "${GREEN}    [SIMULATOR] Sent thr.bin to ${ttys4_dev}! Toolhead Flashed 100% OK.${NC}"
+            else
+                "$PYTHON_BIN" "$FLASHTOOL" -d "$ttys4_dev" -b 500000 -f "$PRECOMPILED_DIR/thr.bin"
+            fi
             echo -e "${GREEN}[✓] Toolhead Board flashed!${NC}"
         else
-            echo -e "${RED}[-] /dev/ttyS4 was not found on this machine.${NC}"
+            echo -e "${RED}[-] ${ttys4_dev} was not found on this machine.${NC}"
         fi
     fi
 
@@ -305,21 +327,29 @@ install_box_firmware() {
         1|2)
             systemctl stop klipper 2>/dev/null || true
             local mmu_dev=""
+            local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
             if mmu_dev=$(select_usb_device "Select your Qidi Box USB Serial Port (usually stm32f401xc):"); then
                 if [[ "$box_opt" == "1" ]]; then
                     echo -e "${CYAN}[*] Step 1/2: Uploading Katapult deployer (mmu-deployer.bin) over USB...${NC}"
-                    "$PYTHON_BIN" "$FLASHTOOL" -d "$mmu_dev" -f "$DEPLOYERS_DIR/mmu-deployer.bin" || true
-                    echo -e "${CYAN}[*] Waiting 4 seconds for Qidi Box to reboot into Katapult...${NC}"
-                    sleep 4
+                    if [[ "${SIM_MODE:-0}" == "1" ]]; then
+                        echo -e "${GREEN}    [SIMULATOR] Sent Katapult deployer to ${mmu_dev}! OK.${NC}"
+                    else
+                        "$PYTHON_BIN" "$FLASHTOOL" -d "$mmu_dev" -f "$DEPLOYERS_DIR/mmu-deployer.bin" || true
+                    fi
+                    sleep 1
                     # Re-detect device path
-                    for d in /dev/serial/by-id/*stm32f401*; do
+                    for d in "$serial_dir"/*stm32f401*; do
                         [[ -e "$d" ]] && mmu_dev="$d" && break
                     done
                 fi
                 echo -e "${CYAN}[*] Flashing Qidi Box production firmware (mmu.bin)...${NC}"
-                "$PYTHON_BIN" "$FLASHTOOL" -d "$mmu_dev" -f "$PRECOMPILED_DIR/mmu.bin"
-                sleep 2
-                for d in /dev/serial/by-id/*stm32f401*; do
+                if [[ "${SIM_MODE:-0}" == "1" ]]; then
+                    echo -e "${GREEN}    [SIMULATOR] Sent mmu.bin to ${mmu_dev}! Qidi Box Flashed 100% OK.${NC}"
+                else
+                    "$PYTHON_BIN" "$FLASHTOOL" -d "$mmu_dev" -f "$PRECOMPILED_DIR/mmu.bin"
+                fi
+                sleep 1
+                for d in "$serial_dir"/*stm32f401*; do
                     [[ -e "$d" ]] && mmu_dev="$d" && break
                 done
                 if [[ -f "$target_cfg/mmu/base/mmu_hardware.cfg" ]]; then
