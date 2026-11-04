@@ -36,8 +36,23 @@ echo ""
 if [[ -n "$CUSTOM_NAME_ARG" ]]; then
     RAW_NAME="$CUSTOM_NAME_ARG"
 else
-    read -rp "👉 Type a name for this backup (e.g. before_${CATEGORY}) [Press ENTER for auto-name]: " RAW_NAME
+    echo -e "Navigation: Type a custom name | Press ${BOLD}ENTER${NC} for auto-name"
+    echo -e "            Type ${BOLD}'b'${NC} to go back | Type ${BOLD}'menu'${NC} for main menu | Type ${BOLD}'q'${NC} to exit"
+    read -rp "👉 Type backup name (or 'b' back, 'q' quit): " RAW_NAME
 fi
+
+case "${RAW_NAME,,}" in
+    b|back|m|menu|cancel)
+        echo -e "${YELLOW}[*] Action cancelled. Returning to menu...${NC}"
+        exit 10
+        ;;
+    q|quit|exit)
+        echo -e "${GREEN}${BOLD}Exiting installer. Goodbye!${NC}"
+        exit 20
+        ;;
+    *)
+        ;;
+esac
 
 if [[ -z "${RAW_NAME// /}" ]]; then
     RAW_NAME="auto_${CATEGORY}"

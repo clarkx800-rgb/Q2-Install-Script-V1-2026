@@ -13,6 +13,8 @@ FLASHTOOL="$FIRMWARE_DIR/flashtool.py"
 DEPLOYERS_DIR="$FIRMWARE_DIR/deployers"
 PRECOMPILED_DIR="$FIRMWARE_DIR/precompiled"
 
+source "$SCRIPT_DIR/ui_nav.sh"
+
 REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME=$(eval echo "~$REAL_USER")
 
@@ -60,40 +62,60 @@ get_target_config_dir() {
 select_usb_device() {
     local prompt_title="$1"
     local filter_hint="${2:-}"
-    local selected_dev=""
     local serial_dir="${SIM_DEV_SERIAL:-/dev/serial/by-id}"
 
     while true; do
-        echo ""
-        echo -e "${BOLD}${prompt_title}${NC}"
+        local dev_items=()
+        local devices=()
         if [[ -d "$serial_dir" ]] && [[ -n "$(ls -A "$serial_dir" 2>/dev/null)" ]]; then
-            local devices=("$serial_dir"/*)
-            local count=${#devices[@]}
-            local idx=1
+            devices=("$serial_dir"/*)
             for dev in "${devices[@]}"; do
-                echo -e "  [${CYAN}${idx}${NC}] $dev"
-                idx=$((idx + 1))
+                dev_items+=("🔌 $dev")
             done
-            echo ""
-            read -rp "👉 Type the number (1-${count}), 'r' to re-scan USB, or 's' to skip: " choice
-            if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$count" ]]; then
-                selected_dev="${devices[$((choice - 1))]}"
-                echo "$selected_dev"
-                return 0
-            elif [[ "$choice" =~ ^[rR]$ ]]; then
-                continue
-            elif [[ "$choice" =~ ^[sS]$ ]]; then
-                return 1
-            else
-                echo -e "${RED}Invalid selection. Please try again.${NC}"
-            fi
-        else
-            echo -e "${YELLOW}[!] No USB serial devices detected in ${serial_dir}/ yet.${NC}"
-            read -rp "👉 Make sure the USB cable is plugged in. Press ENTER to scan again, or 's' to skip: " retry_choice
-            if [[ "$retry_choice" =~ ^[sS]$ ]]; then
-                return 1
-            fi
         fi
+        dev_items+=("🔄 Re-scan USB devices")
+        dev_items+=("⬅️  Back (Skip this step)")
+        dev_items+=("🚪 Exit Installer")
+
+        local header="${CYAN}${BOLD}======================================================================${NC}\n"
+        header+="${BOLD} ${prompt_title}${NC}\n"
+        header+="${CYAN}======================================================================${NC}"
+        if [[ ${#devices[@]} -eq 0 ]]; then
+            header+="\n${YELLOW}[!] No USB serial devices detected in ${serial_dir}/ yet.${NC}\n"
+            header+="Make sure the USB cable is firmly plugged in."
+        fi
+
+        local sel_res
+        sel_res=$(arrow_menu "$header" dev_items 0)
+        local num_devs=${#devices[@]}
+
+        case "$sel_res" in
+            back|b|menu|m)
+                return 1
+                ;;
+            quit|q|exit)
+                echo -e "\n${GREEN}${BOLD}Exiting installer. Goodbye!${NC}"
+                exit 0
+                ;;
+            *)
+                if [[ "$sel_res" =~ ^[0-9]+$ ]]; then
+                    if [[ "$sel_res" -lt "$num_devs" ]]; then
+                        echo "${devices[$sel_res]}"
+                        return 0
+                    elif [[ "$sel_res" -eq "$num_devs" ]]; then
+                        # Re-scan option
+                        continue
+                    elif [[ "$sel_res" -eq $((num_devs + 1)) ]]; then
+                        # Back option
+                        return 1
+                    else
+                        # Exit option
+                        echo -e "\n${GREEN}${BOLD}Exiting installer. Goodbye!${NC}"
+                        exit 0
+                    fi
+                fi
+                ;;
+        esac
     done
 }
 
@@ -155,39 +177,60 @@ install_printer_firmware() {
     # --------------------------------------------------------------------------
     # PART A: MOTION MAINBOARD MCU (GD32F425)
     # --------------------------------------------------------------------------
-    echo ""
-    echo -e "${BLUE}${BOLD}--- PART 1 OF 2: MOTION MAINBOARD MCU (GD32F425) ---${NC}"
-    echo "What is the current state of your Motion Mainboard?"
-    echo "  [1] Super-Stock Factory Qidi (Never installed Katapult before)"
-    echo "  [2] Already has Katapult installed (Flash mcu.bin directly over USB)"
-    echo "  [3] Skip Motion Mainboard flashing"
-    echo ""
-    read -rp "👉 Select option [1-3] (Default: 2): " mb_state
-    mb_state="${mb_state:-2}"
+    local mb_items=(
+        "[1] Already has Katapult installed (Flash mcu.bin directly over USB)"
+        "[2] Super-Stock Factory Qidi (Walk through 1-time Micro-SD card deployer)"
+        "[3] Skip Motion Mainboard flashing"
+        "[b] ⬅️  Back to Main Menu"
+        "[q] 🚪 Exit Installer"
+    )
+    local mb_header="${BLUE}${BOLD}--- PART 1 OF 2: MOTION MAINBOARD MCU (GD32F425) ---${NC}\n"
+    mb_header+="What is the current state of your Motion Mainboard?"
+
+    local mb_res
+    mb_res=$(arrow_menu "$mb_header" mb_items 0)
+    local mb_state="2"
+
+    case "$mb_res" in
+        0) mb_state="2" ;; # Katapult direct
+        1) mb_state="1" ;; # Super-Stock SD deployer
+        2) mb_state="3" ;; # Skip
+        3|b|back|menu|m) return 0 ;;
+        4|q|quit|exit) exit 0 ;;
+        *) mb_state="2" ;;
+    esac
 
     if [[ "$mb_state" == "1" ]]; then
-        echo ""
-        echo -e "${YELLOW}${BOLD}======================================================================${NC}"
-        echo -e "${BOLD} 📇 EASY 1-TIME SD CARD STEP FOR SUPER-STOCK MAINBOARD${NC}"
-        echo -e "${YELLOW}======================================================================${NC}"
-        echo -e "Because the factory Qidi mainboard only accepts its first unlock from"
-        echo -e "a Micro-SD card, follow these simple steps (NO soldering or ST-Link!):"
-        echo ""
-        echo -e "  1. Take a regular Micro-SD card formatted as ${BOLD}FAT32${NC}."
-        echo -e "  2. Copy this file onto the SD card:"
-        echo -e "       ${CYAN}${DEPLOYERS_DIR}/mcu-deployer.bin${NC}"
-        echo -e "  3. Rename that file on the SD card to:"
-        echo -e "       ${GREEN}${BOLD}qd_mcu.bin${NC}"
-        echo -e "  4. Turn OFF the printer, plug the Micro-SD card into the Mainboard,"
-        echo -e "     and turn ON the printer. Wait ${BOLD}15 seconds${NC}."
-        echo -e "  5. Turn OFF the printer, remove the Micro-SD card, and turn it back ON."
-        echo -e "     ${GREEN}Congratulations! Your mainboard now has Katapult forever!${NC}"
-        echo -e "${YELLOW}======================================================================${NC}"
-        echo ""
-        read -rp "👉 Once you have done the SD card step (or if ready now), press ENTER to flash mcu.bin over USB (or type 's' to skip): " sd_done
-        if [[ ! "$sd_done" =~ ^[sS]$ ]]; then
-            mb_state="2"
-        fi
+        local sd_items=(
+            "Micro-SD card step complete! Proceed to flash mcu.bin over USB"
+            "Skip Motion Mainboard flashing"
+            "⬅️  Back to Main Menu"
+            "🚪 Exit Installer"
+        )
+        local sd_header="${YELLOW}${BOLD}======================================================================${NC}\n"
+        sd_header+="${BOLD} 📇 EASY 1-TIME SD CARD STEP FOR SUPER-STOCK MAINBOARD${NC}\n"
+        sd_header+="${YELLOW}======================================================================${NC}\n"
+        sd_header+="Because the factory Qidi mainboard only accepts its first unlock from\n"
+        sd_header+="a Micro-SD card, follow these simple steps (NO soldering or ST-Link!):\n\n"
+        sd_header+="  1. Take a regular Micro-SD card formatted as ${BOLD}FAT32${NC}.\n"
+        sd_header+="  2. Copy this file onto the SD card:\n"
+        sd_header+="       ${CYAN}${DEPLOYERS_DIR}/mcu-deployer.bin${NC}\n"
+        sd_header+="  3. Rename that file on the SD card to:\n"
+        sd_header+="       ${GREEN}${BOLD}qd_mcu.bin${NC}\n"
+        sd_header+="  4. Turn OFF the printer, plug the Micro-SD card into the Mainboard,\n"
+        sd_header+="     and turn ON the printer. Wait ${BOLD}15 seconds${NC}.\n"
+        sd_header+="  5. Turn OFF the printer, remove the Micro-SD card, and turn it back ON.\n"
+        sd_header+="     ${GREEN}Congratulations! Your mainboard now has Katapult forever!${NC}\n"
+
+        local sd_res
+        sd_res=$(arrow_menu "$sd_header" sd_items 0)
+        case "$sd_res" in
+            0) mb_state="2" ;;
+            1) mb_state="3" ;;
+            2|b|back|menu|m) return 0 ;;
+            3|q|quit|exit) exit 0 ;;
+            *) mb_state="3" ;;
+        esac
     fi
 
     if [[ "$mb_state" == "2" ]]; then
@@ -219,18 +262,29 @@ install_printer_firmware() {
     # --------------------------------------------------------------------------
     # PART B: TOOLHEAD MCU (GD32F303 OVER /dev/ttyS4)
     # --------------------------------------------------------------------------
-    echo ""
-    echo -e "${BLUE}${BOLD}--- PART 2 OF 2: TOOLHEAD BOARD (THR - GD32F303) ---${NC}"
-    echo -e "Good news! On the AP board, the Toolhead is wired directly to internal"
-    echo -e "port ${BOLD}/dev/ttyS4${NC} at 500,000 speed. No SD card or USB cable needed!"
-    echo ""
-    echo "What is the current state of your Toolhead Board?"
-    echo "  [1] Super-Stock Factory Qidi (Auto-install Katapult + Flash thr.bin)"
-    echo "  [2] Already has Katapult installed (Flash thr.bin now)"
-    echo "  [3] Skip Toolhead flashing"
-    echo ""
-    read -rp "👉 Select option [1-3] (Default: 1): " thr_state
-    thr_state="${thr_state:-1}"
+    local thr_items=(
+        "[1] Super-Stock Factory Qidi (Auto-install Katapult + Flash thr.bin)"
+        "[2] Already has Katapult installed (Flash thr.bin now)"
+        "[3] Skip Toolhead flashing"
+        "[b] ⬅️  Back to Main Menu"
+        "[q] 🚪 Exit Installer"
+    )
+    local thr_header="${BLUE}${BOLD}--- PART 2 OF 2: TOOLHEAD BOARD (THR - GD32F303) ---${NC}\n"
+    thr_header+="Good news! On the AP board, the Toolhead is wired directly to internal\n"
+    thr_header+="port ${BOLD}/dev/ttyS4${NC} at 500,000 speed. No SD card or USB cable needed!\n\n"
+    thr_header+="What is the current state of your Toolhead Board?"
+
+    local thr_res
+    thr_res=$(arrow_menu "$thr_header" thr_items 0)
+    local thr_state="1"
+    case "$thr_res" in
+        0) thr_state="1" ;;
+        1) thr_state="2" ;;
+        2) thr_state="3" ;;
+        3|b|back|menu|m) return 0 ;;
+        4|q|quit|exit) exit 0 ;;
+        *) thr_state="1" ;;
+    esac
 
     local ttys4_dev="${SIM_TTYS4:-/dev/ttyS4}"
     if [[ "$thr_state" == "1" ]]; then
@@ -288,39 +342,34 @@ install_box_firmware() {
     local target_cfg
     target_cfg=$(get_target_config_dir)
 
-    echo ""
-    echo -e "${CYAN}${BOLD}======================================================================${NC}"
-    echo -e "${BOLD} 🎨 QIDI BOX (MMU) FIRMWARE & CONFIGURATION (OPTIONAL)${NC}"
-    echo -e "${CYAN}======================================================================${NC}"
-    echo -e "The Qidi Box uses an STM32F401 chip connected over standard USB."
-    echo -e "Even if your Qidi Box is 100% factory stock, we can install Katapult"
-    echo -e "and flash our firmware directly over the USB cable!"
-    echo ""
-    echo "Do you want to install firmware on your Qidi Box and enable it?"
-    echo -e "  • ${GREEN}${BOLD}YES (y)${NC} — Install Qidi Box Firmware (mmu.bin) & Enable Qidi Box"
-    echo -e "  • ${CYAN}${BOLD}NO  (n)${NC} — Do NOT use Qidi Box (Disable MMU / Run as Single-Spool Printer)"
-    echo -e "  • ${YELLOW}${BOLD}c${NC}       — Cancel / Back to Main Menu"
-    echo ""
-    read -rp "👉 Install Qidi Box Firmware? Type 'yes' or 'no' (or 'c' to cancel): " box_yn
+    local box_items=(
+        "[1] Super-Stock Qidi Box (Auto-install Katapult + Flash mmu.bin over USB)"
+        "[2] Already has Katapult installed (Flash mmu.bin over USB)"
+        "[3] Enable Qidi Box in Config Only (Already flashed previously)"
+        "[4] Do NOT use Qidi Box (Disable MMU / Run as Single-Spool Printer)"
+        "[b] ⬅️  Back to Main Menu"
+        "[q] 🚪 Exit Installer"
+    )
+    local box_header="${CYAN}${BOLD}======================================================================${NC}\n"
+    box_header+="${BOLD} 🎨 QIDI BOX (MMU) FIRMWARE & CONFIGURATION (OPTIONAL)${NC}\n"
+    box_header+="${CYAN}======================================================================${NC}\n"
+    box_header+="The Qidi Box uses an STM32F401 chip connected over standard USB.\n"
+    box_header+="Even if your Qidi Box is 100% factory stock, we can deploy Katapult\n"
+    box_header+="and flash our firmware directly over the USB cable!\n\n"
+    box_header+="Choose an option:"
 
+    local box_res
+    box_res=$(arrow_menu "$box_header" box_items 0)
     local box_opt=""
-    case "${box_yn,,}" in
-        y|yes)
-            echo ""
-            echo "What is the current state of your Qidi Box?"
-            echo "  [1] Super-Stock Qidi Box (Auto-install Katapult + Flash mmu.bin over USB)"
-            echo "  [2] Already has Katapult installed (Flash mmu.bin over USB)"
-            echo "  [3] Enable Qidi Box in Config Only (Already flashed previously)"
-            echo ""
-            read -rp "👉 Select option [1-3] (Default: 1): " box_opt
-            box_opt="${box_opt:-1}"
-            ;;
-        n|no)
-            box_opt="4"
-            ;;
-        *)
-            return 0
-            ;;
+
+    case "$box_res" in
+        0) box_opt="1" ;;
+        1) box_opt="2" ;;
+        2) box_opt="3" ;;
+        3) box_opt="4" ;;
+        4|b|back|menu|m) return 0 ;;
+        5|q|quit|exit) exit 0 ;;
+        *) return 0 ;;
     esac
 
     case "$box_opt" in
@@ -444,10 +493,18 @@ case "${1:-}" in
         install_box_firmware
         ;;
     *)
-        echo "1) Install Printer Firmware (Motion Mainboard + Toolhead)"
-        echo "2) Install Qidi Box MMU Firmware (Optional)"
-        read -rp "Select [1-2]: " m
-        [[ "$m" == "1" ]] && install_printer_firmware
-        [[ "$m" == "2" ]] && install_box_firmware
+        fw_items=(
+            "[1] Install Printer Firmware (Motion Mainboard + Toolhead MCU)"
+            "[2] Install Qidi Box MMU Firmware (Optional Multi-Material)"
+            "[b] ⬅️  Back to Main Menu"
+            "[q] 🚪 Exit Installer"
+        )
+        fw_res=$(arrow_menu "=== QIDI Q2 FIRMWARE INSTALLER ===" fw_items 0)
+        case "$fw_res" in
+            0) install_printer_firmware ;;
+            1) install_box_firmware ;;
+            2|b|back|menu|m) exit 0 ;;
+            3|q|quit|exit) exit 0 ;;
+        esac
         ;;
 esac

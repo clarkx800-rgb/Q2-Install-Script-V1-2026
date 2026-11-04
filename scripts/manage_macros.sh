@@ -12,6 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUITE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SUITE_CONFIGS="$SUITE_ROOT/configs"
 
+source "$SCRIPT_DIR/ui_nav.sh"
+
 REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME=$(eval echo "~$REAL_USER")
 BACKUP_ROOT_DIR="${SIM_BACKUP_ROOT:-$USER_HOME/q2_ap_backups}"
@@ -178,38 +180,34 @@ PYEOF
 }
 
 choose_macros_menu() {
-    echo ""
-    echo -e "${CYAN}${BOLD}======================================================================${NC}"
-    echo -e "${BOLD} 🧩 MACRO SETUP: INSTALL PUCCI'S MACROS? (YES OR NO)${NC}"
-    echo -e "${CYAN}======================================================================${NC}"
-    echo "Would you like to install Pucci's automated print lifecycle macros?"
-    echo ""
-    echo -e "  • ${GREEN}${BOLD}YES (y)${NC} — Install Pucci's Macros (Auto Chamber Soak, Bed Tramming,"
-    echo "              Nozzle Wiper Polish, Filament Cutter, Smart Fans & Nonlinear PA)"
-    echo -e "  • ${CYAN}${BOLD}NO  (n)${NC} — Keep My Own Existing Macros (Use Pucci's firmware, but"
-    echo "              keep your own macro files)"
-    echo -e "  • ${YELLOW}${BOLD}c${NC}       — Cancel / Back to Main Menu"
-    echo ""
-    while true; do
-        read -rp "👉 Install Pucci's Macros? Type 'yes' or 'no' (or 'c' to cancel): " yn_choice
-        case "${yn_choice,,}" in
-            y|yes)
-                install_pucci_macros
-                break
-                ;;
-            n|no)
-                keep_user_macros "false"
-                break
-                ;;
-            c|cancel|q)
-                echo "Returning to main menu..."
-                break
-                ;;
-            *)
-                echo -e "${RED}Please type 'yes', 'no', or 'c' to cancel.${NC}"
-                ;;
-        esac
-    done
+    local macro_items=(
+        "[1] YES — Install Pucci's Macros (Auto Soak, Wiper Polish, Blade Cutter, Smart Fans)"
+        "[2] NO  — Keep My Own Existing Macros (Keep my own macros with upgraded firmware)"
+        "[b] ⬅️  Back to Main Menu"
+        "[q] 🚪 Exit Installer"
+    )
+    local macro_header="${CYAN}${BOLD}======================================================================${NC}\n"
+    macro_header+="${BOLD} 🧩 MACRO SETUP: INSTALL PUCCI'S MACROS? (YES OR NO)${NC}\n"
+    macro_header+="${CYAN}======================================================================${NC}\n"
+    macro_header+="Would you like to install Pucci's automated print lifecycle macros?\n\n"
+    macro_header+="Choose an option:"
+
+    local m_res
+    m_res=$(arrow_menu "$macro_header" macro_items 0)
+    case "$m_res" in
+        0)
+            install_pucci_macros
+            ;;
+        1)
+            keep_user_macros "false"
+            ;;
+        2|b|back|menu|m)
+            return 10
+            ;;
+        3|q|quit|exit)
+            exit 0
+            ;;
+    esac
 }
 
 restore_macros_menu() {
@@ -228,10 +226,8 @@ restore_macros_menu() {
         return 0
     fi
 
-    echo "Here are all the named backups saved on your machine:"
-    echo ""
     local backups=()
-    local idx=1
+    local b_items=()
     while IFS= read -r dir; do
         [[ ! -d "$dir" ]] && continue
         backups+=("$dir")
@@ -239,8 +235,7 @@ restore_macros_menu() {
         b_name=$(grep -E '^BACKUP_NAME=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || basename "$dir")
         b_date=$(grep -E '^DATE_CREATED=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "Unknown date")
         b_cat=$(grep -E '^CATEGORY=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "snapshot")
-        echo -e "  [${CYAN}${idx}${NC}] ${BOLD}${b_name}${NC}  (${b_date} — Action: ${b_cat})"
-        idx=$((idx + 1))
+        b_items+=("${b_name} (${b_date} — ${b_cat})")
     done < <(ls -1dt "$BACKUP_ROOT_DIR"/*/ 2>/dev/null)
 
     local total=${#backups[@]}
@@ -249,21 +244,54 @@ restore_macros_menu() {
         return 0
     fi
 
-    echo ""
-    read -rp "👉 Select which backup number (1-${total}) to restore macros from (or 'c' to cancel): " b_choice
-    if [[ ! "$b_choice" =~ ^[0-9]+$ ]] || [[ "$b_choice" -lt 1 ]] || [[ "$b_choice" -gt "$total" ]]; then
-        echo "Cancelled."
-        return 0
-    fi
+    b_items+=("⬅️  Back to Main Menu")
+    b_items+=("🚪 Exit Installer")
 
-    local selected_backup="${backups[$((b_choice - 1))]}"
-    echo ""
-    echo "How would you like to restore from this backup?"
-    echo "  [1] Restore ONLY my previous macros (Keep upgraded hardware printer.cfg & serial IDs)"
-    echo "  [2] Restore the ENTIRE config folder (printer.cfg + all macros) from this backup"
-    echo ""
-    read -rp "👉 Select [1-2] (Default: 1): " r_type
-    r_type="${r_type:-1}"
+    local b_header="${CYAN}${BOLD}======================================================================${NC}\n"
+    b_header+="${BOLD} ⏪ RESTORE PREVIOUS MACROS (IF YOU DON'T LIKE PUCCI'S MACROS)${NC}\n"
+    b_header+="${CYAN}======================================================================${NC}\n"
+    b_header+="Select which backup to restore macros from:"
+
+    local b_res
+    b_res=$(arrow_menu "$b_header" b_items 0)
+    local selected_backup=""
+
+    case "$b_res" in
+        back|b|menu|m) return 10 ;;
+        quit|q|exit) exit 0 ;;
+        *)
+            if [[ "$b_res" =~ ^[0-9]+$ ]]; then
+                if [[ "$b_res" -lt "$total" ]]; then
+                    selected_backup="${backups[$b_res]}"
+                elif [[ "$b_res" -eq "$total" ]]; then
+                    return 10 # Back
+                else
+                    exit 0 # Exit
+                fi
+            else
+                return 10
+            fi
+            ;;
+    esac
+
+    local scope_items=(
+        "[1] Restore ONLY my previous macros (Keep upgraded hardware printer.cfg & serial IDs)"
+        "[2] Restore the ENTIRE config folder (printer.cfg + all macros) from this backup"
+        "[b] ⬅️  Back to Backup Selection"
+        "[q] 🚪 Exit Installer"
+    )
+    local scope_header="How would you like to restore from backup: $(basename "$selected_backup")?"
+    local scope_res
+    scope_res=$(arrow_menu "$scope_header" scope_items 0)
+    local r_type="1"
+
+    case "$scope_res" in
+        0) r_type="1" ;;
+        1) r_type="2" ;;
+        2|b|back|menu|m) return 0 ;;
+        3|q|quit|exit) exit 0 ;;
+        *) r_type="1" ;;
+    esac
 
     # Prompt user to name a safety backup before restoring
     bash "$SCRIPT_DIR/backup_machine.sh" "before_macro_restore"

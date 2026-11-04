@@ -5,6 +5,9 @@
 # ==============================================================================
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/scripts/ui_nav.sh"
+
 PRESET_MODE="${1:-}"
 REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME=$(eval echo "~$REAL_USER")
@@ -33,19 +36,10 @@ if [[ ! -d "$BACKUP_ROOT_DIR" ]] || [[ -z "$(ls -A "$BACKUP_ROOT_DIR" 2>/dev/nul
     exit 0
 fi
 
-echo "Available Named Backups on Your Printer:"
-echo ""
-
 backups=()
-idx=1
 while IFS= read -r dir; do
     [[ ! -d "$dir" || ! -f "$dir/restore.sh" ]] && continue
     backups+=("$dir")
-    b_name=$(grep -E '^BACKUP_NAME=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || basename "$dir")
-    b_date=$(grep -E '^DATE_CREATED=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "Unknown date")
-    b_cat=$(grep -E '^CATEGORY=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "snapshot")
-    echo -e "  [${CYAN}${idx}${NC}] ${BOLD}${b_name}${NC}  — Created: ${b_date} (Action: ${b_cat})"
-    idx=$((idx + 1))
 done < <(ls -1dt "$BACKUP_ROOT_DIR"/*/ 2>/dev/null)
 
 total=${#backups[@]}
@@ -54,49 +48,77 @@ if [[ "$total" -eq 0 ]]; then
     exit 0
 fi
 
-echo ""
-read -rp "👉 Enter the backup number (1-${total}) you want to restore (or 'c' to cancel): " b_num
-if [[ ! "$b_num" =~ ^[0-9]+$ ]] || [[ "$b_num" -lt 1 ]] || [[ "$b_num" -gt "$total" ]]; then
-    echo "Restore cancelled."
-    exit 0
-fi
+b_items=()
+for dir in "${backups[@]}"; do
+    b_name=$(grep -E '^BACKUP_NAME=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || basename "$dir")
+    b_date=$(grep -E '^DATE_CREATED=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "Unknown date")
+    b_cat=$(grep -E '^CATEGORY=' "$dir/backup_info.txt" 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "snapshot")
+    b_items+=("${b_name} (${b_date} — ${b_cat})")
+done
+b_items+=("⬅️  Back to Main Menu")
+b_items+=("🚪 Exit Installer")
 
-selected_dir="${backups[$((b_num - 1))]}"
+b_header="${CYAN}${BOLD}======================================================================${NC}\n"
+b_header+="${BOLD} 🔄 QIDI Q2 AP BOARD — UNIVERSAL NAMED-BACKUP RESTORE CENTER${NC}\n"
+b_header+="${CYAN}======================================================================${NC}\n"
+b_header+="Select which backup snapshot you want to restore from:"
+
+b_res=$(arrow_menu "$b_header" b_items 0)
+selected_dir=""
+
+case "$b_res" in
+    back|b|menu|m) exit 0 ;;
+    quit|q|exit) exit 0 ;;
+    *)
+        if [[ "$b_res" =~ ^[0-9]+$ ]]; then
+            if [[ "$b_res" -lt "$total" ]]; then
+                selected_dir="${backups[$b_res]}"
+            elif [[ "$b_res" -eq "$total" ]]; then
+                exit 0 # Back
+            else
+                exit 0 # Exit
+            fi
+        else
+            exit 0
+        fi
+        ;;
+esac
 
 if [[ -n "$PRESET_MODE" ]]; then
     bash "$selected_dir/restore.sh" "$PRESET_MODE"
     exit 0
 fi
 
-echo ""
-echo "What would you like to restore from this snapshot?"
-echo -e "  [${GREEN}1${NC}] ${BOLD}100% Everything${NC} (Configs, Macros, Network, AP Board, and Kernel if saved)"
-echo -e "  [${CYAN}2${NC}] Restore ${BOLD}Klipper Configs & Macros${NC} Only"
-echo -e "  [${CYAN}3${NC}] Restore ${BOLD}Network Adapter Settings${NC} Only"
-echo -e "  [${CYAN}4${NC}] Restore ${BOLD}AP Board CPU & Disk Settings${NC} Only"
-echo -e "  [${CYAN}5${NC}] Restore ${BOLD}Factory Linux Kernel (boot partition)${NC} Only"
-echo -e "  [${YELLOW}0${NC}] Cancel"
-echo ""
-read -rp "👉 Choose restore scope [0-5] (Default: 1): " r_scope
-r_scope="${r_scope:-1}"
+scope_items=(
+    "[1] 100% Everything (Configs, Macros, Network, AP Board, and Kernel if saved)"
+    "[2] Restore Klipper Configs & Macros Only"
+    "[3] Restore Network Adapter Settings Only"
+    "[4] Restore AP Board CPU & Disk Settings Only"
+    "[5] Restore Factory Linux Kernel (boot partition) Only"
+    "[b] ⬅️  Back to Backup Selection"
+    "[q] 🚪 Exit Installer"
+)
 
-case "$r_scope" in
-    1)
+scope_header="What would you like to restore from backup: $(basename "$selected_dir")?"
+scope_res=$(arrow_menu "$scope_header" scope_items 0)
+
+case "$scope_res" in
+    0)
         bash "$selected_dir/restore.sh" --full
         ;;
-    2)
+    1)
         bash "$selected_dir/restore.sh" --macros-only
         ;;
-    3)
+    2)
         bash "$selected_dir/restore.sh" --network-only
         ;;
-    4)
+    3)
         bash "$selected_dir/restore.sh" --ap-only
         ;;
-    5)
+    4)
         bash "$selected_dir/restore.sh" --kernel-only
         ;;
     *)
-        echo "Cancelled."
+        echo "Restore cancelled."
         ;;
 esac

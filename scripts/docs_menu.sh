@@ -8,6 +8,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUITE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+source "$SCRIPT_DIR/ui_nav.sh"
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
@@ -25,8 +27,7 @@ show_file_clean() {
         echo "File not found: $file_path"
     fi
     echo -e "${CYAN}${BOLD}----------------------------------------------------------------------${NC}"
-    echo ""
-    read -rp "👉 Press ENTER to return to the Tips & Troubleshooting menu..." _
+    nav_pause "Press ENTER to return to the Tips & Troubleshooting menu..."
 }
 
 run_live_health_check() {
@@ -63,41 +64,47 @@ run_live_health_check() {
     echo -n "   • moonraker: " && systemctl is-active moonraker 2>/dev/null || true
 
     echo ""
-    read -rp "👉 Press ENTER to return to the Tips & Troubleshooting menu..." _
+    nav_pause "Press ENTER to return to the Tips & Troubleshooting menu..."
 }
 
 while true; do
-    echo ""
-    echo -e "${CYAN}${BOLD}======================================================================${NC}"
-    echo -e "${BOLD} 📖 TIPS, INSTRUCTIONS, FIRMWARE ANATOMY & TROUBLESHOOTING MENU${NC}"
-    echo -e "${CYAN}======================================================================${NC}"
-    echo -e "  [${GREEN}1${NC}] 🧬 ${BOLD}Firmware & Printer Anatomy${NC} (How the 4 boards & firmware work)"
-    echo -e "  [${GREEN}2${NC}] 🚑 ${BOLD}Troubleshooting & Copy-Paste Terminal Commands${NC}"
-    echo -e "  [${GREEN}3${NC}] 🖨️  ${BOLD}Slicer Start / End G-Code Copy-Paste Guide${NC} (OrcaSlicer)"
-    echo -e "  [${GREEN}4${NC}] 📋 ${BOLD}Step-by-Step Instructions & Overview${NC} (README)"
-    echo -e "  [${CYAN}5${NC}] 🩺 ${BOLD}Run Live Printer Health & USB Connection Check Now${NC}"
-    echo -e "  [${YELLOW}0${NC}] ⬅️  Back to Main Menu"
-    echo -e "${CYAN}======================================================================${NC}"
-    read -rp "👉 Select an option [0-5]: " doc_opt
+    doc_items=(
+        "[1] 🧬 Firmware & Printer Anatomy (How the 4 boards & firmware work)"
+        "[2] 🚑 Troubleshooting & Copy-Paste Terminal Commands"
+        "[3] 🖨️  Slicer Start / End G-Code Copy-Paste Guide (OrcaSlicer)"
+        "[4] 📋 Step-by-Step Instructions & Overview (README)"
+        "[5] 🩺 Run Live Printer Health & USB Connection Check Now"
+        "[b] ⬅️  Back to Main Menu"
+        "[q] 🚪 Exit Installer"
+    )
 
-    case "$doc_opt" in
-        1)
+    doc_header="${CYAN}${BOLD}======================================================================${NC}\n"
+    doc_header+="${BOLD} 📖 TIPS, INSTRUCTIONS, FIRMWARE ANATOMY & TROUBLESHOOTING MENU${NC}\n"
+    doc_header+="${CYAN}======================================================================${NC}"
+
+    doc_res=$(arrow_menu "$doc_header" doc_items 0)
+
+    case "$doc_res" in
+        0)
             show_file_clean "$SUITE_ROOT/FIRMWARE_ANATOMY.md"
             ;;
-        2)
+        1)
             show_file_clean "$SUITE_ROOT/TROUBLESHOOTING.md"
             ;;
-        3)
+        2)
             show_file_clean "$SUITE_ROOT/SLICER_GUIDE.md"
             ;;
-        4)
+        3)
             show_file_clean "$SUITE_ROOT/README.md"
             ;;
-        5)
+        4)
             run_live_health_check
             ;;
-        0|q|Q|"")
+        5|b|back|menu|m)
             break
+            ;;
+        6|q|quit|exit)
+            exit 0
             ;;
         *)
             echo "Invalid selection."

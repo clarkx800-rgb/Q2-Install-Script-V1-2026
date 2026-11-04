@@ -10,6 +10,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUITE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+source "$SCRIPT_DIR/ui_nav.sh"
+
 REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME=$(eval echo "~$REAL_USER")
 
@@ -43,48 +45,49 @@ configure_spoolman_interactive() {
     local moonraker_cfg="$target_cfg/moonraker.conf"
     local printer_cfg="$target_cfg/printer.cfg"
 
-    echo ""
-    echo -e "${CYAN}${BOLD}======================================================================${NC}"
-    echo -e "${BOLD} 🧵 SPOOLMAN FILAMENT MANAGER SETUP (OPTIONAL)${NC}"
-    echo -e "${CYAN}======================================================================${NC}"
-    echo -e "Spoolman is an open-source filament spool tracker that can run on your"
-    echo -e "PC, Raspberry Pi, home server, or Docker container."
-    echo ""
-    echo -e "Would you like to connect this printer to Spoolman on your PC/network?"
-    echo -e "  • ${GREEN}${BOLD}YES (y)${NC} — Connect to Spoolman running on your PC or local server"
-    echo -e "  • ${CYAN}${BOLD}NO  (n)${NC} — Do NOT use Spoolman (Run standalone without Spoolman)"
-    echo -e "  • ${YELLOW}${BOLD}c${NC}       — Cancel / Back to Main Menu"
-    echo ""
+    local sp_items=(
+        "[1] YES — Connect to Spoolman running on PC / local network"
+        "[2] NO  — Do NOT use Spoolman (Run standalone without Spoolman)"
+        "[b] ⬅️  Back to Main Menu"
+        "[q] 🚪 Exit Installer"
+    )
+    local sp_header="${CYAN}${BOLD}======================================================================${NC}\n"
+    sp_header+="${BOLD} 🧵 SPOOLMAN FILAMENT MANAGER SETUP (OPTIONAL)${NC}\n"
+    sp_header+="${CYAN}======================================================================${NC}\n"
+    sp_header+="Spoolman is an open-source filament spool tracker that can run on your\n"
+    sp_header+="PC, Raspberry Pi, home server, or Docker container.\n\n"
+    sp_header+="Choose an option:"
 
-    while true; do
-        read -rp "👉 Enable Spoolman? Type 'yes' or 'no' (or 'c' to cancel): " sp_choice
-        case "${sp_choice,,}" in
-            y|yes)
-                echo ""
-                echo -e "${CYAN}${BOLD}--- Enter Your PC / Spoolman Host Details ---${NC}"
-                echo -e "On your PC, find your local IP (e.g. 192.168.1.50) where Spoolman is running."
-                echo ""
-                local sp_ip=""
-                while true; do
-                    read -rp "👉 Enter PC / Server IP Address: " sp_ip
-                    sp_ip=$(echo "$sp_ip" | tr -d '[:space:]')
-                    if [[ -n "$sp_ip" ]]; then
-                        break
-                    else
-                        echo -e "${RED}IP address cannot be empty. Please type your local IP.${NC}"
-                    fi
-                done
+    local sp_res
+    sp_res=$(arrow_menu "$sp_header" sp_items 0)
 
-                read -rp "👉 Enter Spoolman Port [Default: 7912]: " sp_port
-                sp_port=$(echo "$sp_port" | tr -d '[:space:]')
-                [[ -z "$sp_port" ]] && sp_port="7912"
+    case "$sp_res" in
+        0)
+            echo ""
+            echo -e "${CYAN}${BOLD}--- Enter Your PC / Spoolman Host Details ---${NC}"
+            echo -e "On your PC, find your local IP (e.g. 192.168.1.50) where Spoolman is running."
 
-                # Prompt user to name a backup restore point
-                bash "$SCRIPT_DIR/backup_machine.sh" "enable_spoolman"
+            local sp_ip
+            sp_ip=$(prompt_nav_input "Enter PC / Server IP Address (e.g. 192.168.1.50)")
+            [[ "$sp_ip" == "back" || "$sp_ip" == "menu" ]] && return 10
+            while [[ -z "${sp_ip// /}" ]]; do
+                echo -e "${RED}IP address cannot be empty.${NC}"
+                sp_ip=$(prompt_nav_input "Enter PC / Server IP Address (e.g. 192.168.1.50)")
+                [[ "$sp_ip" == "back" || "$sp_ip" == "menu" ]] && return 10
+            done
 
-                echo -e "${CYAN}[*] Updating Moonraker & Klipper with Spoolman at http://${sp_ip}:${sp_port}...${NC}"
+            local sp_port
+            sp_port=$(prompt_nav_input "Enter Spoolman Port" "7912")
+            [[ "$sp_port" == "back" || "$sp_port" == "menu" ]] && return 10
+            sp_port=$(echo "$sp_port" | tr -d '[:space:]')
+            [[ -z "$sp_port" ]] && sp_port="7912"
 
-                python3 - << PYEOF
+            # Prompt user to name a backup restore point
+            bash "$SCRIPT_DIR/backup_machine.sh" "enable_spoolman"
+
+            echo -e "${CYAN}[*] Updating Moonraker & Klipper with Spoolman at http://${sp_ip}:${sp_port}...${NC}"
+
+            python3 - << PYEOF
 import os, re
 
 moonraker_path = "$moonraker_cfg"
@@ -118,23 +121,22 @@ if os.path.isfile(printer_path):
         f.write(p)
 PYEOF
 
-                chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
-                echo -e "${CYAN}[*] Restarting Moonraker & Klipper services...${NC}"
-                systemctl restart moonraker klipper 2>/dev/null || true
+            chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
+            echo -e "${CYAN}[*] Restarting Moonraker & Klipper services...${NC}"
+            systemctl restart moonraker klipper 2>/dev/null || true
 
-                echo ""
-                echo -e "${GREEN}${BOLD}[✓] Spoolman Enabled Successfully!${NC}"
-                echo -e "    • Server URL: ${BOLD}http://${sp_ip}:${sp_port}${NC}"
-                echo -e "    • Moonraker and Klipper are now connected to your Spoolman server."
-                break
-                ;;
-            n|no)
-                # Prompt user to name a backup restore point
-                bash "$SCRIPT_DIR/backup_machine.sh" "disable_spoolman"
+            echo ""
+            echo -e "${GREEN}${BOLD}[✓] Spoolman Enabled Successfully!${NC}"
+            echo -e "    • Server URL: ${BOLD}http://${sp_ip}:${sp_port}${NC}"
+            echo -e "    • Moonraker and Klipper are now connected to your Spoolman server."
+            ;;
+        1)
+            # Prompt user to name a backup restore point
+            bash "$SCRIPT_DIR/backup_machine.sh" "disable_spoolman"
 
-                echo -e "${CYAN}[*] Disabling Spoolman in Moonraker & Klipper...${NC}"
+            echo -e "${CYAN}[*] Disabling Spoolman in Moonraker & Klipper...${NC}"
 
-                python3 - << PYEOF
+            python3 - << PYEOF
 import os, re
 
 moonraker_path = "$moonraker_cfg"
@@ -165,24 +167,21 @@ if os.path.isfile(printer_path):
         f.write(p)
 PYEOF
 
-                chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
-                echo -e "${CYAN}[*] Restarting Moonraker & Klipper services...${NC}"
-                systemctl restart moonraker klipper 2>/dev/null || true
+            chown -R "$REAL_USER:$REAL_USER" "$target_cfg" 2>/dev/null || true
+            echo -e "${CYAN}[*] Restarting Moonraker & Klipper services...${NC}"
+            systemctl restart moonraker klipper 2>/dev/null || true
 
-                echo ""
-                echo -e "${GREEN}${BOLD}[✓] Spoolman Disabled (Standalone Mode Active)!${NC}"
-                echo -e "    • Your printer will not attempt to connect to any external Spoolman server."
-                break
-                ;;
-            c|cancel|q)
-                echo "Cancelled."
-                break
-                ;;
-            *)
-                echo -e "${RED}Please type 'yes', 'no', or 'c' to cancel.${NC}"
-                ;;
-        esac
-    done
+            echo ""
+            echo -e "${GREEN}${BOLD}[✓] Spoolman Disabled (Standalone Mode Active)!${NC}"
+            echo -e "    • Your printer will not attempt to connect to any external Spoolman server."
+            ;;
+        2|b|back|menu|m)
+            return 10
+            ;;
+        3|q|quit|exit)
+            exit 0
+            ;;
+    esac
 }
 
 configure_spoolman_interactive

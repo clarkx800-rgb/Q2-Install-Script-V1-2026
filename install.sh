@@ -18,6 +18,8 @@ REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME=$(eval echo "~$REAL_USER")
 BACKUP_ROOT_DIR="$USER_HOME/q2_ap_backups"
 
+source "$SCRIPTS_DIR/ui_nav.sh"
+
 # ANSI Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,16 +50,14 @@ echo -e "  4. ${BOLD}CREDITS:${NC} Built on upstream work by n3oney, Kalico, Kli
 echo -e "     (Katapult/Moonraker), moggieuk (Happy Hare), & prestonbrown (HelixScreen)."
 echo -e "${RED}${BOLD}========================================================================${NC}"
 echo ""
-read -rp "👉 Do you understand and accept 100% of the risk? Type 'yes' to continue: " accept_risk
-if [[ "${accept_risk,,}" != "yes" && "${accept_risk,,}" != "y" ]]; then
-    echo "Exiting without making any changes."
-    exit 0
-fi
-
-pause_return() {
-    echo ""
-    read -rp "👉 Press ENTER to return to the Main Control Center..." _
-}
+read -rp "👉 Do you understand and accept 100% of the risk? Type 'yes' to continue (or 'q' to quit): " accept_risk
+case "${accept_risk,,}" in
+    yes|y) ;;
+    *)
+        echo -e "${GREEN}${BOLD}Exiting installer without making any changes. Goodbye!${NC}"
+        exit 0
+        ;;
+esac
 
 submenu_refinement() {
     local title="$1"
@@ -65,19 +65,32 @@ submenu_refinement() {
     local apply_script="$3"
     local restore_flag="$4"
 
-    echo ""
-    echo -e "${CYAN}${BOLD}======================================================================${NC}"
-    echo -e "${BOLD} ${title}${NC}"
-    echo -e "${CYAN}======================================================================${NC}"
-    echo -e "  [${GREEN}1${NC}] ${BOLD}Apply / Install${NC} this refinement (Prompts to save a named backup first)"
-    echo -e "  [${YELLOW}2${NC}] ${BOLD}Restore / Undo${NC} this refinement from a named backup"
-    echo -e "  [${CYAN}0${NC}] Cancel / Back to Main Menu"
-    echo ""
-    read -rp "👉 Choose an action [0-2]: " sub_act
+    local sub_items=(
+        "[1] Apply / Install this refinement (Prompts to save a named backup first)"
+        "[2] Restore / Undo this refinement from a named backup"
+        "[b] ⬅️  Back to Main Menu (or type 'menu')"
+        "[q] 🚪 Exit Installer (or type 'quit')"
+    )
 
-    case "$sub_act" in
-        1)
-            bash "$SCRIPTS_DIR/backup_machine.sh" "$category"
+    local sub_header="${CYAN}${BOLD}======================================================================${NC}\n"
+    sub_header+="${BOLD} ${title}${NC}\n"
+    sub_header+="${CYAN}======================================================================${NC}"
+
+    local sub_res
+    sub_res=$(arrow_menu "$sub_header" sub_items 0)
+
+    case "$sub_res" in
+        0)
+            local bkp_st=0
+            bash "$SCRIPTS_DIR/backup_machine.sh" "$category" || bkp_st=$?
+            if [[ $bkp_st -eq 20 ]]; then
+                exit 0
+            elif [[ $bkp_st -ne 0 ]]; then
+                echo -e "${YELLOW}[*] Action cancelled. Returning to menu...${NC}"
+                sleep 1
+                return 0
+            fi
+
             if [[ "$category" == "kernel" ]]; then
                 local latest_bkp=""
                 [[ -f "$BACKUP_ROOT_DIR/.latest_backup_path" ]] && latest_bkp=$(cat "$BACKUP_ROOT_DIR/.latest_backup_path")
@@ -89,102 +102,121 @@ submenu_refinement() {
             else
                 bash "$apply_script"
             fi
-            pause_return
+            nav_pause
             ;;
-        2)
+        1)
             bash "$SUITE_ROOT/restore.sh" "$restore_flag"
-            pause_return
+            nav_pause
             ;;
-        *)
+        2|b|back|m|menu)
+            return 0
+            ;;
+        3|q|quit|exit)
+            echo -e "${GREEN}${BOLD}Exiting installer. Goodbye!${NC}"
+            exit 0
             ;;
     esac
 }
 
 while true; do
-    clear 2>/dev/null || true
-    echo -e "${CYAN}${BOLD}========================================================================${NC}"
-    echo -e "${BOLD}   🛠️  QIDI Q2 AP BOARD — COMMUNITY INSTALLER & RESCUE CONTROL CENTER${NC}"
-    echo -e "${CYAN}========================================================================${NC}"
-    echo -e "  Welcome! Choose one item at a time. Before any change is made, you"
-    echo -e "  will be asked to ${BOLD}name a backup snapshot${NC} so you can restore 100% anytime."
-    echo ""
-    echo -e "  ${BLUE}${BOLD}--- FIRMWARE, MACROS & TOOLS ---${NC}"
-    echo -e "  [${GREEN}1${NC}] 🖨️  ${BOLD}Install Printer Firmware${NC} (Motion Mainboard MCU + Toolhead MCU)"
-    echo -e "  [${GREEN}2${NC}] 🎨 ${BOLD}Install / Configure Qidi Box MMU Firmware${NC} (Optional / Separate)"
-    echo -e "  [${GREEN}3${NC}] 🧵 ${BOLD}Spoolman Manager Setup${NC} (Optional: Connect to PC / Server IP)"
-    echo -e "  [${GREEN}4${NC}] 🧩 ${BOLD}Macro Setup:${NC} Install Pucci's Macros OR Keep Your Own Macros"
-    echo -e "  [${YELLOW}5${NC}] ⏪ ${BOLD}Restore Your Previous Macros${NC} (If you don't like Pucci's macros)"
-    echo ""
-    echo -e "  ${BLUE}${BOLD}--- AP BOARD REFINEMENTS (EACH SEPARATE & RESTORABLE) ---${NC}"
-    echo -e "  [${GREEN}6${NC}] 📡 ${BOLD}Network Adapter Refinement${NC} (Apply or Restore Wi-Fi Sleep Fix)"
-    echo -e "  [${GREEN}7${NC}] ⚡ ${BOLD}AP Board 'Timer Too Close' Refinement${NC} (Apply or Restore CPU/Disk Fix)"
-    echo -e "  [${GREEN}8${NC}] 🐧 ${BOLD}N3oney's Modern 5.10 Linux Kernel${NC} (Install or Restore q2_boot.img)"
-    echo ""
-    echo -e "  ${BLUE}${BOLD}--- BACKUP, RESTORE & HELP ---${NC}"
-    echo -e "  [${CYAN}9${NC}] 🔄 ${BOLD}Universal Restore Center${NC} (Restore 100% from any named backup)"
-    echo -e "  [${CYAN}10${NC}] 📖 ${BOLD}Tips, Instructions, Firmware Anatomy & Troubleshooting${NC}"
-    echo -e "  [${RED}0${NC}] 🚪 Exit Installer"
-    echo -e "${CYAN}========================================================================${NC}"
-    read -rp "👉 Enter your choice [0-10]: " main_opt
+    menu_items=(
+        "[1]  🖨️  Install Printer Firmware (Motion Mainboard MCU + Toolhead MCU)"
+        "[2]  🎨 Install / Configure Qidi Box MMU Firmware (Optional / Separate)"
+        "[3]  🧵 Spoolman Manager Setup (Optional: Connect to PC / Server IP)"
+        "[4]  🧩 Macro Setup: Install Pucci's Macros OR Keep Your Own Macros"
+        "[5]  ⏪ Restore Your Previous Macros (If you don't like Pucci's macros)"
+        "[6]  📡 Network Adapter Refinement (Apply or Restore Wi-Fi Sleep Fix)"
+        "[7]  ⚡ AP Board 'Timer Too Close' Refinement (Apply or Restore CPU/Disk Fix)"
+        "[8]  🐧 N3oney's Modern 5.10 Linux Kernel (Install or Restore q2_boot.img)"
+        "[9]  🔄 Universal Restore Center (Restore 100% from any named backup)"
+        "[10] 📖 Tips, Instructions, Firmware Anatomy & Troubleshooting"
+        "[0]  🚪 Exit Installer (or press 'q')"
+    )
 
-    case "$main_opt" in
+    main_header="${CYAN}${BOLD}========================================================================${NC}\n"
+    main_header+="${BOLD}   🛠️  QIDI Q2 AP BOARD — COMMUNITY INSTALLER & RESCUE CONTROL CENTER${NC}\n"
+    main_header+="${CYAN}========================================================================${NC}\n"
+    main_header+="  Choose an option using ${BOLD}↑/↓${NC} arrow keys with ${BOLD}>${NC} indicator, or type number.\n"
+    main_header+="  Before any change is made, you will be prompted to name a backup.\n"
+    main_header+="  Type ${BOLD}'b'${NC} to go back, ${BOLD}'menu'${NC} for main menu, or ${BOLD}'q'${NC} to exit anytime."
+
+    main_res=$(arrow_menu "$main_header" menu_items 0)
+
+    case "$main_res" in
+        0)
+            bkp_st=0
+            bash "$SCRIPTS_DIR/backup_machine.sh" "printer_firmware" || bkp_st=$?
+            if [[ $bkp_st -eq 20 ]]; then exit 0; elif [[ $bkp_st -ne 0 ]]; then continue; fi
+            local_st=0
+            bash "$SCRIPTS_DIR/flash_firmware.sh" --printer || local_st=$?
+            [[ $local_st -eq 10 ]] && continue
+            nav_pause
+            ;;
         1)
-            bash "$SCRIPTS_DIR/backup_machine.sh" "printer_firmware"
-            bash "$SCRIPTS_DIR/flash_firmware.sh" --printer
-            pause_return
+            bkp_st=0
+            bash "$SCRIPTS_DIR/backup_machine.sh" "qidi_box_firmware" || bkp_st=$?
+            if [[ $bkp_st -eq 20 ]]; then exit 0; elif [[ $bkp_st -ne 0 ]]; then continue; fi
+            local_st=0
+            bash "$SCRIPTS_DIR/flash_firmware.sh" --box || local_st=$?
+            [[ $local_st -eq 10 ]] && continue
+            nav_pause
             ;;
         2)
-            bash "$SCRIPTS_DIR/backup_machine.sh" "qidi_box_firmware"
-            bash "$SCRIPTS_DIR/flash_firmware.sh" --box
-            pause_return
+            local_st=0
+            bash "$SCRIPTS_DIR/configure_spoolman.sh" || local_st=$?
+            [[ $local_st -eq 10 ]] && continue
+            nav_pause
             ;;
         3)
-            bash "$SCRIPTS_DIR/configure_spoolman.sh"
-            pause_return
+            local_st=0
+            bash "$SCRIPTS_DIR/manage_macros.sh" --choose || local_st=$?
+            [[ $local_st -eq 10 ]] && continue
+            nav_pause
             ;;
         4)
-            bash "$SCRIPTS_DIR/manage_macros.sh" --choose
-            pause_return
+            local_st=0
+            bash "$SCRIPTS_DIR/manage_macros.sh" --restore || local_st=$?
+            [[ $local_st -eq 10 ]] && continue
+            nav_pause
             ;;
         5)
-            bash "$SCRIPTS_DIR/manage_macros.sh" --restore
-            pause_return
-            ;;
-        6)
             submenu_refinement \
                 "📡 NETWORK ADAPTER REFINEMENT (Wi-Fi Sleep Killer + 2MB TCP Buffers)" \
                 "network_refinement" \
                 "$SCRIPTS_DIR/apply_network_refinement.sh" \
                 "--network-only"
             ;;
-        7)
+        6)
             submenu_refinement \
                 "⚡ AP BOARD 'TIMER TOO CLOSE' REFINEMENT (1.1GHz Lock + Disk Unchoke)" \
                 "ap_board_refinement" \
                 "$SCRIPTS_DIR/apply_ap_board_refinement.sh" \
                 "--ap-only"
             ;;
-        8)
+        7)
             submenu_refinement \
                 "🐧 N3ONEY MODERN 5.10 LINUX KERNEL (q2_boot.img)" \
                 "kernel" \
                 "$SCRIPTS_DIR/flash_kernel.sh" \
                 "--kernel-only"
             ;;
-        9)
+        8)
             bash "$SUITE_ROOT/restore.sh"
-            pause_return
+            nav_pause
             ;;
-        10)
+        9)
             bash "$SCRIPTS_DIR/docs_menu.sh"
             ;;
-        0|q|Q)
+        10|q|quit|exit)
             echo ""
             echo -e "${GREEN}${BOLD}Thank you for using the Qidi Q2 AP Board Mint System Suite! Happy Printing!${NC}"
             exit 0
             ;;
+        back|b|menu|m)
+            continue
+            ;;
         *)
-            echo -e "${RED}Invalid option. Please enter a number from 0 to 10.${NC}"
+            echo -e "${RED}Invalid option.${NC}"
             sleep 1
             ;;
     esac
